@@ -63,7 +63,7 @@ td.pts,th.pts{text-align:right;font-family:var(--mono);color:var(--gold)}
 
 /* Game */
 #game{display:grid;gap:14px}
-.hud{display:grid;grid-template-columns:auto 1fr auto;gap:14px 20px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.hud{display:grid;grid-template-columns:auto 1fr auto auto;gap:14px 20px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 .hud-sol{display:grid}
 .hud-sol .big{font-family:var(--display);font-size:1.6rem;font-weight:700;line-height:1}
 .meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
@@ -179,6 +179,7 @@ td.pts,th.pts{text-align:right;font-family:var(--mono);color:var(--gold)}
   .main{grid-template-columns:minmax(0,1fr)}
   .hud{grid-template-columns:1fr auto}
   .meters{grid-column:1/-1;grid-row:2}
+  .joy{grid-column:1/-1;flex-direction:row}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .lsParts{display:flex;justify-content:space-between;gap:6px;margin-top:4px;font-size:.8rem;color:var(--fg)}
@@ -214,6 +215,9 @@ details.fold>summary{cursor:pointer;font-family:var(--display);font-weight:700;p
   .maplegend{font-size:.72rem;gap:2px 10px}
 }
 @media (min-width:1000px) and (max-height:820px){.hud .big{font-size:1.5rem}.meter .label{font-size:.7rem}}
+.joy{display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:center}
+.joy button{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;white-space:nowrap}
+.joy button.on{border-color:#3fb950;color:#3fb950}
 </style>
 </head>
 <body>
@@ -306,6 +310,7 @@ details.fold>summary{cursor:pointer;font-family:var(--display);font-weight:700;p
     <div class="hud-sol"><span class="label" id="hudBody">Mars</span><span class="big">Sol <span id="hudSol" class="num">1</span>/7</span></div>
     <div class="meters" id="meters"></div>
     <div class="score"><span class="label">Science</span><div class="big" id="hudSci">0</div><span class="label" id="hudTarget">target 150</span></div>
+    <div class="joy"><button type="button" id="joyBtn" title="Plug the ESP32 joystick into USB, then click (Chrome or Edge)">🎮 Connect joystick</button><span class="label" id="joyStatus">not connected</span></div>
   </div>
   <div class="main">
     <div class="left">
@@ -1456,7 +1461,32 @@ document.addEventListener('keydown',e=>{if(!$('#askBox').hidden||e.target.tagNam
   const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];
   if(e.key==='Escape'&&buildSel){buildSel=null;render();return}
   if(d){e.preventDefault();const nx=S.ax+d[0],ny=S.ay+d[1];if(nx>=0&&ny>=0&&nx<W&&ny<H)moveTo(nx,ny)}});
-window.__outpost={get S(){return S},get WX(){return WX},get WXP(){return WX_PREV},wxCompare,dataTables,realDayText,askKB,KB,earthHints,callEarth,askQuestion,setMat:k=>{matSel=k},rebuild,shield,skipBusy:()=>{busyUntil=0},walkTo1:(x,y)=>{walkTarget=[x,y];stepToward()},stepToward,isBusy,newGame,moveTo,endSol,actionsHere,doAction,build:(k,x,y)=>{buildSel=k;build(x,y)},nightPlan,render};
+// ESP32 joystick over USB (Web Serial). The board sends lines: "MOVE U|D|L|R" and "BTN J".
+const JOY={port:null,reader:null};
+function joyReady(){return $('#askBox').hidden&&!$('#game').hidden&&S&&!S.over&&!S.waiting&&!paused}
+function joyLine(line){line=line.trim();if(!line)return;
+  if(line==='BTN J'&&S&&S.waiting&&!$('#overlay').hidden){const g=$('#briefGo');if(g){g.click();return}}
+  if(!joyReady())return;
+  const m=/^MOVE ([UDLR])$/.exec(line);
+  if(m){const d={U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]}[m[1]],nx=S.ax+d[0],ny=S.ay+d[1];if(nx>=0&&ny>=0&&nx<W&&ny<H)moveTo(nx,ny);return}
+  if(line==='BTN J'){const a=actionsHere().filter(a=>a.ok).sort((a,b)=>b.pts-a.pts)[0];if(a)doAction(a)}}
+function joySet(on,msg){const b=$('#joyBtn');b.classList.toggle('on',on);b.textContent=on?'🎮 Joystick on':'🎮 Connect joystick';$('#joyStatus').textContent=msg}
+async function joyConnect(){
+  if(!('serial' in navigator)){joySet(false,'needs Chrome or Edge');return}
+  if(JOY.port){try{await JOY.reader?.cancel()}catch(e){}return}
+  try{JOY.port=await navigator.serial.requestPort();await JOY.port.open({baudRate:115200})}
+  catch(e){JOY.port=null;joySet(false,e.name==='NotFoundError'?'not connected':'port busy: close Serial Monitor');return}
+  joySet(true,'connected');let buf='';
+  const dec=new TextDecoderStream(),closed=JOY.port.readable.pipeTo(dec.writable).catch(()=>{});
+  JOY.reader=dec.readable.getReader();
+  try{for(;;){const {value,done}=await JOY.reader.read();if(done)break;buf+=value;let i;while((i=buf.indexOf('\n'))>=0){joyLine(buf.slice(0,i));buf=buf.slice(i+1)}}}
+  catch(e){}
+  try{JOY.reader.releaseLock()}catch(e){}await closed;try{await JOY.port.close()}catch(e){}
+  JOY.port=JOY.reader=null;joySet(false,'disconnected');
+}
+$('#joyBtn').onclick=joyConnect;
+if(!('serial' in navigator))$('#joyStatus').textContent='needs Chrome or Edge';
+window.__outpost={joyLine,get S(){return S},get WX(){return WX},get WXP(){return WX_PREV},wxCompare,dataTables,realDayText,askKB,KB,earthHints,callEarth,askQuestion,setMat:k=>{matSel=k},rebuild,shield,skipBusy:()=>{busyUntil=0},walkTo1:(x,y)=>{walkTarget=[x,y];stepToward()},stepToward,isBusy,newGame,moveTo,endSol,actionsHere,doAction,build:(k,x,y)=>{buildSel=k;build(x,y)},nightPlan,render};
 try{$('#nasaKey').value=localStorage.getItem(KEYK)||''}catch(e){}
 $('#nasaSave').onclick=()=>{const v=$('#nasaKey').value.trim();try{v?localStorage.setItem(KEYK,v):localStorage.removeItem(KEYK)}catch(e){}NASA.live={};renderNasaStatus();loadNasa(true)};
 $('#nasaClear').onclick=()=>{$('#nasaKey').value='';try{localStorage.removeItem(KEYK);localStorage.removeItem(CACHEK)}catch(e){}NASA.data={flares:null,neo:null,photos:null,apod:null};NASA.live={};renderNasaStatus()};
