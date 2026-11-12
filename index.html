@@ -1,0 +1,1468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Outpost 7</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: mission-control console. Map is the hero; meters strip on top; action console beside (stacks on phones). Deliberately one dark look (space). */
+:root{
+  color-scheme:dark;
+  --void:#03040a; --panel:#1b2136; --panel2:#283050; --line:#66739c;
+  --fg:#f7f4ec; --muted:#c3c9db;
+  --gold:#f2b33d; --power:#f5d547; --life:#52b7e0; --rad:#a68cf0;
+  --good:#6ad99a; --bad:#ff7466; --mars:#f28a5c; --moon:#b9c0cc;
+  --display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+[hidden]{display:none!important}
+html,body{background:var(--void);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.45;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;
+  background-image:radial-gradient(1px 1px at 12% 18%,#ffffffcc 50%,transparent 51%),radial-gradient(1px 1px at 72% 9%,#ffffffaa 50%,transparent 51%),radial-gradient(1px 1px at 38% 63%,#ffffff99 50%,transparent 51%),radial-gradient(1px 1px at 88% 74%,#ffffffaa 50%,transparent 51%),radial-gradient(1.5px 1.5px at 55% 32%,#ffffffcc 50%,transparent 51%);}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:.01em}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,.cell:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-family:var(--display);font-weight:700;letter-spacing:.03em}
+.btn:hover:not(:disabled){border-color:var(--gold)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn.primary{background:var(--gold);color:#1a1405;border-color:var(--gold)}
+.btn.big{font-size:1.15rem;padding:16px 28px;min-width:240px}
+.label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* Home */
+#home{min-height:80vh;display:grid;place-items:center;text-align:center}
+.home-inner{display:grid;gap:28px;justify-items:center}
+.planet{width:min(220px,50vw);aspect-ratio:1;max-width:100%;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,#f0a070 0%,#c9542a 38%,#6e2410 78%,#2a0c05 100%);box-shadow:0 0 80px #d4673a44, inset -30px -20px 60px #00000088}
+.home-title{font-size:clamp(2.6rem,9vw,5.6rem);line-height:.95;font-weight:700}
+.home-title span{display:block;color:var(--gold)}
+.home-sub{color:var(--muted);max-width:52ch;margin:0}
+.home-btns{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;font-family:var(--display)}
+
+/* Pages */
+.page{display:grid;gap:20px;max-width:760px;margin:0 auto}
+.page h2{font-size:2rem}
+.page ul{margin:0;padding-left:1.2em;display:grid;gap:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+td.pts,th.pts{text-align:right;font-family:var(--mono);color:var(--gold)}
+.choice-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.choice{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:16px;text-align:left;display:grid;gap:6px}
+.choice[aria-pressed="true"]{border-color:var(--gold);background:#3a3014}
+.choice b{font-family:var(--display);font-size:1.2rem}
+.choice small{color:var(--muted)}
+
+/* Game */
+#game{display:grid;gap:14px}
+.hud{display:grid;grid-template-columns:auto 1fr auto;gap:14px 20px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.hud-sol{display:grid}
+.hud-sol .big{font-family:var(--display);font-size:1.6rem;font-weight:700;line-height:1}
+.meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.meter{display:grid;gap:4px;min-width:0}
+.meter .top{display:flex;justify-content:space-between;gap:6px;font-size:.8rem}
+.bar{height:12px;border-radius:6px;background:#05060c;border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;transition:width .35s ease}
+.meter.low .bar{animation:pulse 1s infinite}
+@keyframes pulse{50%{border-color:var(--bad);box-shadow:0 0 8px var(--bad)}}
+.score{text-align:right}
+.score .big{font-family:var(--mono);font-size:1.6rem;color:var(--gold);line-height:1}
+.main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;align-items:start}
+.mapbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:8px}
+.map{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;container-type:inline-size;background:#000;padding:2px;border-radius:6px}
+.cell{aspect-ratio:1;border:0;border-radius:3px;padding:0;position:relative;display:grid;place-items:center;font-size:calc(100cqi/12*.5);line-height:1}
+.cell.unseen{background:repeating-linear-gradient(135deg,#04050b 0 6px,#080a14 6px 12px) !important;cursor:default;box-shadow:inset 0 0 0 1px #1a1f33}
+.cell{box-shadow:inset 0 0 0 1px #0009}
+.cell.safe{box-shadow:inset 0 0 0 2px #7fd3f5}
+.cell .poi{filter:drop-shadow(0 0 2px #000) drop-shadow(0 1px 1px #000)}
+.cell.buildable{box-shadow:inset 0 0 0 3px var(--gold)}
+.cell.done .poi{opacity:.5}
+.ask{max-width:560px;width:100%;max-height:90vh;display:grid;grid-template-rows:auto 1fr auto auto;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.ask header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ask header{flex-wrap:wrap}.ask header h3{margin:0}.ask header .btn{white-space:nowrap;padding:8px 12px}
+#askLog{list-style:none;margin:0;padding:0;overflow:auto;display:grid;gap:8px;align-content:start;min-height:180px}
+#askLog li{padding:8px 12px;border-radius:10px;max-width:90%;line-height:1.45}
+#askLog li.mc{background:var(--panel2);border:1px solid var(--line);justify-self:start}
+#askLog li.me{background:#2a2412;border:1px solid var(--gold);justify-self:end}
+#askLog a{color:var(--life)}
+.askform{display:flex;gap:8px}
+.askform input{flex:1;min-width:0;background:var(--void);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit}
+#askSuggest{display:flex;flex-wrap:wrap;gap:6px}
+.askchip{cursor:pointer;color:var(--fg)}
+#askLog li.mc ol{margin:6px 0 0;padding-left:20px}
+#askLog li.mc small{color:var(--muted)}
+#askLog .thinking{color:var(--muted)}
+.callbtn{color:var(--good)!important}
+.askchip:hover{border-color:var(--gold)}
+.cell .mtag{position:absolute;right:1px;bottom:1px;font-family:var(--mono);font-size:max(8px,calc(100cqi/12*.17));line-height:1;padding:1px 2px;border-radius:2px;color:#111;font-weight:700}
+.matrow{display:flex;flex-wrap:wrap;gap:6px}
+.mat{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:.8rem;display:flex;align-items:center;gap:6px}
+.mat[aria-pressed="true"]{border-color:var(--gold);background:#3a3014;box-shadow:0 0 0 1px var(--gold)}
+.mat i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.cell .astro{position:absolute;inset:3px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle,#ffffffcc 0 45%,#ffffff33 46% 60%,transparent 62%);box-shadow:0 0 0 2px #fff,0 0 10px #fff}
+.cell .astro + .poi{opacity:.35}
+.maplegend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted)}
+.aprow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.clock{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.clock .bar{height:14px}
+.clock .bar i{background:var(--gold);transition:width .1s linear}
+.clock .num{font-size:1.25rem;color:var(--gold);min-width:3.2em;text-align:right}
+.clock.urgent .num{color:var(--bad)}
+.clock.urgent .bar i{background:var(--bad)}
+.clock.urgent .bar{animation:pulse .8s infinite}
+.clockrow{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.84rem;min-height:1.3em}
+.clockrow .warn{color:var(--bad);font-weight:700}
+.clockrow .busy{color:var(--gold)}
+.pips{display:flex;gap:3px;flex-wrap:wrap}
+.pip{width:12px;height:12px;border-radius:3px;background:var(--gold)}
+.pip.off{background:#ffffff30}
+.side{display:grid;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;min-width:0}
+.panel h3{font-size:1rem}
+.here{font-size:.92rem;color:var(--muted);margin:0}
+.actions{display:grid;gap:8px}
+.act{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+.act:hover:not(:disabled){border-color:var(--gold)}
+.act:disabled{opacity:.6;cursor:not-allowed}
+.act b{font-family:var(--display)}
+.act .pts{font-family:var(--mono);color:var(--gold);align-self:center}
+.tier{display:inline-block;font-family:var(--display);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px;border:1px solid currentColor}
+.tier.veryeasy{color:var(--life)}.tier.easy{color:var(--good)}.tier.medium{color:var(--gold)}.tier.hard{color:var(--mars)}.tier.challenge{color:var(--bad)}
+.act small{color:var(--muted);grid-column:1/-1;font-size:.78rem}
+.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.mod{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:2px}
+.mod[aria-pressed="true"]{border-color:var(--gold);background:#3a3014;box-shadow:0 0 0 1px var(--gold)}
+.mod:disabled{opacity:.55;cursor:not-allowed}
+.mod b{font-family:var(--display);font-size:.88rem}
+.mod small{color:var(--muted);font-size:.74rem;line-height:1.3}
+.inv{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.82rem}
+.forecast{display:grid;gap:6px;font-size:.88rem}
+.fc{display:flex;gap:8px;align-items:baseline}
+.fc .label{min-width:66px}
+.tonight{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.dx{font-weight:700;white-space:nowrap}.dx.up{color:var(--good)}.dx.down{color:var(--bad)}.dx.zero{color:var(--muted)}
+.log{max-height:220px;overflow:auto;display:grid;gap:6px;font-size:.84rem;margin:0;padding:0;list-style:none}
+.log li{border-left:3px solid var(--line);padding-left:8px}
+.log li.sci{border-color:var(--gold)}
+.log li.bad{border-color:var(--bad)}
+.log li.good{border-color:var(--good)}
+.log li .fact{display:block;color:var(--muted);font-size:.78rem}
+.log li img{display:block;max-width:100%;max-height:140px;border-radius:6px;margin-top:6px}
+.nasa{display:grid;gap:10px;max-width:520px;width:100%;text-align:left}
+.nasa-row{display:flex;gap:8px;flex-wrap:wrap}
+.nasa input{flex:1 1 220px;min-width:0;background:var(--void);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit}
+.nasa small{color:var(--muted)}
+.src{display:flex;flex-wrap:wrap;gap:6px}
+.src .chip.live{border-color:var(--good);color:var(--good)}
+.src .chip.off{color:var(--muted)}
+.endsol{width:100%}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);border-radius:10px;padding:10px 16px;max-width:min(90vw,480px);z-index:20;font-weight:700}
+.overlay{position:fixed;inset:0;background:rgba(2,3,8,.9);-webkit-backdrop-filter:blur(5px) saturate(.5);backdrop-filter:blur(5px) saturate(.5);display:grid;place-items:center;z-index:30;padding:16px}
+.overlay .card,.overlay .ask{background:#222944;border:2px solid #7884ad;border-top:4px solid var(--gold);box-shadow:0 24px 70px rgba(0,0,0,.85),0 0 0 1px #000}
+.overlay .stat{background:#323b5e;border:1px solid #5a6690}
+.overlay #askLog li.mc{background:#2e3657;border-color:#5a6690}
+.overlay .label,.overlay small{color:var(--muted)}
+.overlay .card{max-width:620px;width:100%;max-height:90vh;overflow:auto;display:grid;gap:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--panel2);border-radius:8px;padding:10px}
+.stat .num{font-size:1.4rem;color:var(--gold)}
+@media (max-width:820px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .hud{grid-template-columns:1fr auto}
+  .meters{grid-column:1/-1;grid-row:2}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.lsParts{display:flex;justify-content:space-between;gap:6px;margin-top:4px;font-size:.8rem;color:var(--fg)}
+.lsParts .lsLow{color:var(--bad);font-weight:700}
+/* tabs + one-screen layout */
+.tabs{display:flex;gap:6px}
+.tab{flex:1;white-space:nowrap;font-size:.92rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-family:var(--display);font-weight:700;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--panel2);color:var(--fg);border-color:var(--gold);box-shadow:inset 0 -3px 0 var(--gold)}
+.left{display:grid;gap:14px;min-width:0;align-content:start}
+.mapbox{min-width:0}
+.mod{padding:6px 9px}
+.mod small{font-size:.74rem}
+details.fold>summary{cursor:pointer;font-family:var(--display);font-weight:700;padding:4px 0}
+@media (min-width:1000px){
+  body{padding-block:10px}
+  .wrap:has(#game:not([hidden])){max-width:1500px}
+  .left .fc{display:grid;gap:0}
+  .left .inv{display:flex;flex-wrap:wrap;gap:4px}.left .inv .chip{font-size:.74rem;padding:2px 8px}
+  .left #gameNasa{display:flex;flex-wrap:wrap;gap:4px}.left #gameNasa .chip{font-size:.7rem;padding:1px 7px}
+  .left>.panel{overflow-x:hidden}
+  .side .palette{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #game:not([hidden]){height:calc(100dvh - 38px);grid-template-rows:auto minmax(0,1fr);gap:10px}
+  .hud{padding:8px 14px}
+  .main{--mapW:min(780px,calc((100dvh - 270px) * 1.333));grid-template-columns:minmax(230px,1fr) var(--mapW) minmax(300px,1.25fr);height:100%;min-height:0;align-items:stretch;gap:10px}
+  .left,.side{min-height:0;overflow:hidden}
+  .left{grid-template-rows:minmax(0,auto) minmax(150px,1fr);align-content:stretch;gap:10px}
+  .left>.panel{min-height:0;overflow:auto;padding:10px 12px;gap:8px}
+  .left>.panel:last-child{grid-template-rows:auto auto minmax(0,1fr) auto}
+  .left .log{max-height:none;min-height:0}
+  .side{display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px}
+  .side>.tabp{min-height:0;overflow:auto;align-content:start}
+  .mapbox{align-content:start;overflow:hidden;padding:8px}
+  .maplegend{font-size:.72rem;gap:2px 10px}
+}
+@media (min-width:1000px) and (max-height:820px){.hud .big{font-size:1.5rem}.meter .label{font-size:.7rem}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- HOME -->
+<section id="home">
+  <div class="home-inner">
+    <div class="planet" aria-hidden="true"></div>
+    <h1 class="home-title">Welcome to <span>Outpost 7</span></h1>
+    <p class="home-sub">Build a working base on the Moon or Mars. Keep your astronaut safe for 7 sols and do real science.</p>
+    <div class="home-btns">
+      <button class="btn big" id="btnContinue">Continue outpost</button>
+      <button class="btn big primary" id="btnNew">New outpost</button>
+    </div>
+    <button class="linkbtn" id="btnHow">How to play</button>
+    <button class="linkbtn" id="btnAskHome">Ask Mission Control a space question</button>
+    <details class="card nasa" id="nasaCard">
+      <summary class="label" style="cursor:pointer">Real NASA data settings</summary>
+      <small>The game uses NASA's open APIs: solar flares (DONKI), near-Earth asteroids (NeoWs), Mars rover photos and Astronomy Picture of the Day. Paste your free key from api.nasa.gov. It is saved only in this browser, never in the game file.</small>
+      <div class="nasa-row"><label for="nasaKey" class="label" style="align-self:center">API key</label><input id="nasaKey" type="password" autocomplete="off" placeholder="DEMO_KEY (shared, limited)"><button class="btn" id="nasaSave">Save and load</button><button class="btn" id="nasaClear">Clear</button></div>
+      <div class="src" id="nasaStatus"></div>
+      <small id="spacewxNote"></small>
+    </details>
+  </div>
+</section>
+
+<!-- HOW TO PLAY -->
+<section id="how" class="page" hidden>
+  <h2>How to play</h2>
+  <div class="card">
+    <p class="label">There are some main components in the game</p>
+    <ul>
+      <li>Make a working outpost (Lunar or Martian).</li>
+      <li>Every design is a trade-off. You only have so many cargo crates.</li>
+      <li>Do science to earn science points.</li>
+      <li>Size doesn't matter. The function and effectiveness of your outpost is more important.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <p class="label">The game</p>
+    <ul>
+      <li>You control a Martian or Lunar astronaut. Click a tile (or use arrow keys) to walk.</li>
+      <li>Every sol has a countdown timer. Walking and work take time. You cannot skip the day: when the timer hits zero, night falls. Get back to the blue safe zone before then!</li>
+      <li>Tasks come in 5 levels, set by their points. Harder tasks take longer and use more power: <b style="color:var(--life)">Very easy</b> (5 points, 2 s, 1 power), <b style="color:var(--good)">Easy</b> (10 to 15 points, 3 s, 2 power), <b style="color:var(--gold)">Medium</b> (20 points, 8 s, 5 power), <b style="color:var(--mars)">Hard</b> (25 points, 11 s, 7 power) and <b style="color:var(--bad)">Challenge</b> (30 points, 15 s, 10 power).</li>
+      <li>Pick a material for each module: <b>Aluminum</b> (standard), <b>3D-printed regolith</b> (made from local soil: fewer crates, slower, extra shielding), <b>Polyethylene + water</b> (strong radiation shield, but costs more crates and power) or <b>Kevlar inflatable</b> (light and fast, but weak). You can change a module's material later with <b>Change a module's material</b>. A small tag on each tile shows its material.</li>
+      <li>Stuck or curious? Click <b>Ask Mission Control</b> and type a space question. Not sure what to do next? Press <b>📞 Call Earth</b> for hints about your outpost (3 calls each sol). The game pauses while you read.</li>
+      <li>Storms hit most nights. Mars: dust storms, dust devils, great dust storms, deep cold and radiation storms. Moon: solar flares, coronal mass ejections, micrometeorites, meteor showers and moonquakes. A weather station shows tomorrow's storm.</li>
+      <li>Real space weather: each sol replays one real day from the latest weekly NOAA snapshot, taken every Monday. The home screen shows what got better and worse since last week. You'll see that day's solar flares, and on the geomagnetic storm day the radio link to Earth is slower.</li>
+      <li>Some modules are required to win, and the list grows with the mode. Cadet needs a habitat and power. Junior adds a comms dish, Commander adds a greenhouse, and Veteran adds a med bay. Every module uses crates and power (3 power per crate). Open the build menu whenever you are ready. Walking around never makes you build.</li>
+      <li>Choose where to place things. Walls and water tanks only shield you if they touch the rocket or a habitat.</li>
+      <li>Keep 3 meters up: <b style="color:var(--rad)">Radiation shield</b>, <b style="color:var(--life)">Life support</b> and <b style="color:var(--power)">Power</b>. Life support is made of three parts, 💧 water, 🫁 oxygen and 🍎 food, and the meter shows their average. Water and oxygen drop 16 a night, food drops 12. These match NASA's daily numbers for one astronaut: about 4 L of water (3 L to drink, 1 L to wash), 0.84 kg of oxygen and 1.8 kg of food. Growing plants and lab work use some water too. If one of them runs out, the crew is in crisis and the other two drain fast every night. The mission ends when the life support meter or the radiation shield hits zero. Power is your fuel: walking uses 1 power every 2 steps, and hot water for washing uses 4 every night. The power tank holds 150. If power runs out at night, water freezes and the air recycler stops, so water and oxygen drop fast.</li>
+      <li>Walking outside the blue safe zone lowers your radiation shield. All three meters are better when they are higher: a green ▲ is good news, a red ▼ is bad news. Storms and solar flares hit at night.</li>
+      <li>Survive 7 sols and reach the science target to win. There are 5 game modes, from Cadet (easiest) to Veteran (hardest), plus Free play where you cannot lose.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <details class="fold"><summary>How to earn science points (all tasks)</summary>
+    <div class="table-wrap"><table id="scoreTable"><thead><tr><th>Task</th><th>Level</th><th>Time</th><th class="pts">Points</th></tr></thead><tbody></tbody></table></div></details>
+  </div>
+  <div class="card">
+    <details class="fold"><summary>Game data table: the real numbers behind the game</summary>
+    <div id="dataTables" style="display:grid;gap:18px"></div></details>
+  </div>
+  <div><button class="btn" data-go="home">Back</button></div>
+</section>
+
+<!-- SETUP -->
+<section id="setup" class="page" hidden>
+  <h2>New outpost</h2>
+  <div class="card" style="display:grid;gap:12px">
+    <p class="label">Where are you landing?</p>
+    <div class="choice-row" id="pickBody">
+      <button class="choice" data-body="mars" aria-pressed="true"><b>Mars</b><small>38% of Earth gravity. Thin air, dust storms that dim solar panels, signs of ancient water and maybe ancient life.</small></button>
+      <button class="choice" data-body="moon" aria-pressed="false"><b>The Moon</b><small>17% of Earth gravity. No air at all, so radiation is stronger and walking outside costs more. Ice hides in shadowed craters near the south pole.</small></button>
+    </div>
+    <p class="label">Pick your level</p>
+    <div class="choice-row" id="pickDiff"></div>
+  </div>
+  <div class="home-btns" style="justify-content:flex-start">
+    <button class="btn" data-go="home">Back</button>
+    <button class="btn primary" id="btnLaunch">Launch</button>
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="game" hidden>
+  <div class="hud">
+    <div class="hud-sol"><span class="label" id="hudBody">Mars</span><span class="big">Sol <span id="hudSol" class="num">1</span>/7</span></div>
+    <div class="meters" id="meters"></div>
+    <div class="score"><span class="label">Science</span><div class="big" id="hudSci">0</div><span class="label" id="hudTarget">target 150</span></div>
+  </div>
+  <div class="main">
+    <div class="left">
+      <div class="panel">
+        <h3>Mission status</h3>
+        <div class="inv" id="inv"></div>
+        <div class="forecast" id="forecast"></div>
+        <div class="tonight" id="tonight"></div>
+              </div>
+      <div class="panel">
+        <h3>Mission log</h3>
+        <div class="src" id="gameNasa" title="Where the NASA data comes from"></div>
+        <ul class="log" id="log"></ul>
+        <button class="linkbtn" id="btnQuit" style="justify-self:start">Save and go home</button>
+      </div>
+    </div>
+    <div class="mapbox">
+      <div class="clock" id="clock"><span class="label">Time until night</span><div class="bar"><i id="clockBar" style="width:100%"></i></div><span class="num" id="clockNum">2:00</span></div>
+      <div class="clockrow"><span id="clockMsg"></span><span style="display:flex;gap:14px"><button class="linkbtn callbtn" id="btnCall">📞 Call Earth</button><button class="linkbtn" id="btnAsk">Ask Mission Control</button><button class="linkbtn" id="btnPause">Pause</button></span></div>
+      <div class="map" id="map" role="grid" aria-label="Outpost map"></div>
+      <div class="maplegend">
+        <span>🚀 rocket (lab)</span><span>🪨 rock field</span><span>☄️ meteorite</span><span>🧊 ice</span><span>⛰️ outcrop</span><span id="lgRiver">〰️ ancient riverbed</span><span>🕳️ lava tube (shelter)</span><span>🌋 lava rock</span><span>⭕ crater rim</span><span class="lgMars">🏞️ gullies</span><span class="lgMars">❄️ CO2 frost</span><span class="lgMars">🫐 blueberries</span><span class="lgMoon">〽️ lava rille</span><span class="lgMoon">🏔️ highlands</span><span class="lgMoon">🌀 swirl</span><span class="lgMars">🏺 clay</span><span class="lgMars">🏜️ dunes</span><span class="lgMoon">🌑 shadowed crater</span><span class="lgMoon">✨ glass beads</span><span class="lgMoon">🥌 boulder track</span><span>blue edge = safe zone</span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="tabs" role="tablist"><button class="tab" role="tab" data-tab="tabHere" aria-selected="true">Actions here</button><button class="tab" role="tab" data-tab="tabBuild" aria-selected="false">Build <span class="num" id="tabCrates"></span></button></div>
+      <div class="panel tabp" id="tabHere">
+        <h3 id="hereTitle">Rocket</h3>
+        <p class="here" id="hereText"></p>
+        <div class="actions" id="actions"></div>
+      </div>
+      <div class="panel tabp" id="tabBuild" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h3>Build your outpost</h3><span class="label">Crates <span class="num" id="crates"></span></span></div>
+        <div class="src" id="reqList"></div>
+        <button class="btn" id="btnBuild" aria-expanded="false">Open build menu</button>
+        <div id="matbox" hidden style="display:grid;gap:8px">
+          <span class="label">Material</span>
+          <div class="matrow" id="matrow"></div>
+          <small class="here" id="matInfo"></small>
+          <button class="btn" id="btnEdit">Change a module's material</button>
+        </div>
+        <div class="palette" id="palette" hidden></div>
+        <p class="here" id="buildHint">Pick a module, then click a gold tile. Building takes 8 seconds and uses power.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<div class="overlay" id="overlay" hidden><div class="card" id="overlayCard"></div></div>
+<div class="overlay" id="askBox" hidden><div class="ask" role="dialog" aria-label="Ask Mission Control">
+  <header><h3>📡 Ask Mission Control</h3><span style="display:flex;gap:8px;align-items:center"><button class="btn" id="askCall" hidden>📞 Call Earth</button><button class="btn" id="askClose">Close</button></span></header>
+  <ul id="askLog" aria-live="polite"></ul>
+  <div id="askSuggest"></div>
+  <form class="askform" id="askForm"><label for="askInput" class="label" hidden>Your question</label><input id="askInput" autocomplete="off" placeholder="Type a space question, like: why is Mars red?"><button class="btn primary" type="submit">Ask</button></form>
+</div></div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const SAVE='outpost7-save-v1';
+const W=12,H=9,RX=5,RY=4;
+const HOUR_MS=4000, STEP_MS=800; // 1 work hour = 4 s, 1 step = 0.8 s
+
+// Jessie's science points table (exact values)
+const SCI={
+  dirt:['Dirt sample',20], dirtLab:['Work on dirt sample in rocket',20], pic:['Picture',5], picLab:['Picture studied in rocket',10],
+  send:['Send data back to Earth',30], growRocket:['Grow food and vegetation on the rocket',20], spacewalk:['Space walk discoveries',30],
+  weather:['Weather and radiation log',25], survival:['Survival (Junior mode only)',5], health:['Health check: compare astronaut body vs Earth standard',25],
+  growSoil:['Grow vegetation in Martian or lunar soil',30], meteorFind:['Find meteorite',20], meteorAnalyze:['Analyze meteorite',15],
+  water:['Find water',30], life:['Discover evidence of past life',30], activity:['Try activities on the Moon or Mars',30],
+  // More ways to earn science (added later; Jessie's original 16 above are unchanged)
+  sunset:['Watch the sky (sunset or Earth)',5], panelClean:['Brush dust off solar panels',5],
+  telescope:['Stargaze through the rocket telescope',10], exercise:['Exercise to protect bones and muscles',10], dosimeter:['Read your radiation badge',10],
+  plantCheck:['Measure plant growth',10], reactor:['Check the reactor heat output',10], groundTemp:['Measure the ground temperature',10],
+  skyPhoto:['Photograph moons or Earth in the sky',15], outreach:['Radio a school on Earth',15], spectro:['Scan rocks with a spectrometer',15], crater:['Measure an impact crater',15],
+  radar:['Map buried ice with ground radar',20], sand:['Sieve sand from the riverbed',20], shieldTest:['Measure how much your shield blocks',20], instrument:['Set up a science instrument',20],
+  layers:['Map the rock layers',25], seismo:['Set up a seismometer',25],
+  caveExplore:['Explore a lava tube cave',30],
+  basalt:['Sample basalt lava rock',15], craterRim:['Survey a crater rim',15], frost:['Measure carbon dioxide frost',15], gullies:['Study gullies on a slope',20], spherules:['Collect hematite "blueberries"',20], highland:['Collect a bright highland rock',20], rille:['Explore a lava rille',25], swirl:['Map a lunar swirl',25], dunes:['Measure moving sand dunes',15], clay:['Test clay minerals',25], boulder:['Study a rolling-boulder track',20], glass:['Collect volcanic glass beads',25], shadow:['Probe a permanently shadowed crater',30],
+  // Hard tasks (25 points): longer, use more power, and most need gear or carry a risk
+  coreDrill:['Drill a deep rock core',25], cliff:['Climb down a crater cliff',25], packReturn:['Pack a sample tube for return to Earth',25],
+  oxygen:['Make oxygen from local resources',25], relay:['Relay data through an orbiter',25], balloon:['Launch a weather balloon',25],
+  heartStudy:['Run a heart and sleep study',25], solarScope:['Track the Sun with a solar telescope',25]
+};
+// Task levels by points: easy 5-15, medium 20-25, challenge 30. Harder tasks take longer.
+const TIERS={veryeasy:{name:'Very easy',h:0.5,pw:1},easy:{name:'Easy',h:0.75,pw:2},medium:{name:'Medium',h:2,pw:5},hard:{name:'Hard',h:2.75,pw:7},challenge:{name:'Challenge',h:3.75,pw:10}}; // science uses power too
+// 5 levels by points: 5 very easy, 10-15 easy, 20 medium, 25 hard, 30 challenge
+const tierOf=k=>{const p=SCI[k]?SCI[k][1]:0;return p>=30?'challenge':p>=25?'hard':p>=20?'medium':p>=10?'easy':'veryeasy'};
+const BUILD_POWER_PER_CRATE=3; // building uses power: bigger modules cost more
+const bPow=m=>m.cost*BUILD_POWER_PER_CRATE;
+// Building materials, based on real NASA research
+const MATS={
+  alu:{name:'Aluminum',tag:'Al',color:'#c9ced8',crates:c=>c,pow:1,h:2,sh:1,desc:'Standard. Normal crates, power and build time (8 s). +1 shield if it touches the rocket or a habitat.',fact:'The International Space Station modules are built mostly from aluminum alloys.'},
+  regolith:{name:'3D-printed regolith',tag:'Rg',color:'#d08a5c',crates:c=>Math.max(1,Math.ceil(c/2)),pow:1.25,h:2.5,sh:2,desc:'Printed from local soil: half the crates, 1.25x power, 10 s to build. +2 shield if it touches the rocket or a habitat.',fact:"NASA's 3D-Printed Habitat Challenge tested printing shelters from Mars-like soil."},
+  poly:{name:'Polyethylene + water',tag:'PE',color:'#8fd3f4',crates:c=>c+1,pow:1.5,h:3,sh:3,desc:'Strong radiation shield: +3 shield if it touches the rocket or a habitat. 1 extra crate, 1.5x power, 12 s to build.',fact:'Hydrogen-rich materials like polyethylene and water block space radiation well. The ISS crew quarters use polyethylene shielding.'},
+  kevlar:{name:'Kevlar inflatable',tag:'Kv',color:'#f2d03d',crates:c=>Math.max(1,c-1),pow:0.5,h:1,sh:0,desc:'Light and fast: 1 fewer crate, half the power, 4 s to build. Weak: no extra shield, and micrometeorites hurt it more.',fact:'NASA attached the inflatable BEAM module, made with layers of Kevlar-like fabric, to the ISS in 2016.'}
+};
+let matSel='alu',editMode=false;
+const mCrates=(m,mat)=>MATS[mat].crates(m.cost);
+const mPow=(m,mat)=>Math.round(m.cost*3*MATS[mat].pow);
+const MODS={
+  hab:{name:'Habitat',icon:'🏠',cost:3,desc:'+15 oxygen and +15 water a sol (recycles air and water). Shelter: +6 shield.'},
+  solar:{name:'Solar panel',icon:'🔆',cost:2,desc:'+18 power a sol (Moon 20). Dust storms cut it to 30%.'},
+  nuclear:{name:'Fission reactor',icon:'⚛️',cost:4,desc:'+20 power a sol, storm or not.'},
+  wall:{name:'Regolith wall',icon:'🧱',cost:1,desc:'+5 shield if it touches rocket or habitat.'},
+  tank:{name:'Water tank',icon:'🛢️',cost:2,desc:'+12 water a sol. +7 shield if it touches rocket or habitat.'},
+  green:{name:'Greenhouse',icon:'🌱',cost:2,desc:'+6 oxygen and +6 food a sol. Grow plants in local soil.'},
+  comms:{name:'Comms dish',icon:'📡',cost:2,desc:'Send data back to Earth.'},
+  weather:{name:'Weather station',icon:'🌡️',cost:1,desc:'Weather log, and see tomorrow\'s forecast.'},
+  med:{name:'Med bay',icon:'🩺',cost:2,desc:'Daily health checks.'},
+  drill:{name:'Ice drill',icon:'⛏️',cost:2,desc:'Lets you drill for water at ice.'},
+  // more modules, each based on a real NASA system
+  recycler:{name:'Water recycler',icon:'♻️',cost:2,desc:'+12 water a sol by cleaning used water, and halves water lost on a night with no power. Only one counts.'},
+  ogs:{name:'Oxygen generator',icon:'🫧',cost:2,desc:'+14 oxygen a sol by splitting water: uses 3 water a sol.'},
+  pantry:{name:'Food pantry',icon:'🥫',cost:1,desc:'+8 food a sol from packed meals.'},
+  battery:{name:'Battery bank',icon:'🔋',cost:2,desc:'Stores 20 extra power for the night, so heaters stay on even if power hits 0. No power upkeep.'},
+  rover:{name:'Pressurized rover',icon:'🚙',cost:3,desc:'Ride in a shielded cabin: steps outside the safe zone cost half as much radiation shield.'},
+  fuelcell:{name:'Fuel cell',icon:'⚗️',cost:2,desc:'+10 power and +4 water a sol, storm or not. No power upkeep.'},
+  scrubber:{name:'CO2 scrubber',icon:'🌬️',cost:1,desc:'+10 oxygen a sol by pulling carbon dioxide out of the air.'},
+  algae:{name:'Algae bioreactor',icon:'🦠',cost:2,desc:'+6 oxygen and +6 food a sol from fast-growing algae.'},
+  suitport:{name:'Suitport',icon:'🚪',cost:2,desc:'Climb straight into your suit from inside: walking uses half the power.'}
+};
+const MODFACT={recycler:'The Water Recovery System on the ISS recycles about 98% of the crew\'s water, including sweat, breath and urine.',
+  ogs:'The ISS Oxygen Generation System uses electricity to split water into oxygen to breathe and hydrogen.',
+  pantry:'ISS food arrives on cargo ships. Most is packed to last a long time, and astronauts eat about 1.8 kg of food a day.',
+  battery:'The ISS stores solar power in lithium-ion batteries so it keeps running during the 45 minutes of darkness on every orbit.',
+  rover:'NASA has designed pressurized rovers so astronauts can drive far from base in shirt sleeves, protected inside the cabin.',
+  fuelcell:'Fuel cells on Apollo and the Space Shuttle combined hydrogen and oxygen to make electricity, and the crews drank the water they made.',
+  scrubber:'The ISS Carbon Dioxide Removal Assembly pulls the carbon dioxide astronauts breathe out so it does not build up.',
+  algae:'Algae turn carbon dioxide into oxygen and can be eaten. A photobioreactor that grew algae for oxygen was tested on the ISS in 2019.',
+  suitport:'NASA tested suitports on its Space Exploration Vehicle rover: the suit hangs on the outside wall, so dust stays out and getting ready takes minutes.'};
+const POWER_MODS=['solar','nuclear','battery','fuelcell'];
+const BODY={
+  mars:{name:'Mars',step:1,nightOut:8,flare:28,solar:18,ground:[16,48,40],
+    events:{clear:['Clear skies','Nothing special tonight.'],dust:['Dust storm','Solar panels make only 30% power today.'],spe:['Solar particle event','Radiation storm tonight. Shield up and sleep in the safe zone.'],cold:['Deep cold night','Heaters drain 10 extra power tonight.'],devil:['Dust devil swarm','Whirlwinds coat your panels: solar makes 70% today, and grit clogs the air filters: -6 oxygen tonight.'],gds:['Great dust storm','A planet-wide storm blocks the Sun: solar makes only 20% today, and the dark, cold night drains 6 extra power.']}},
+  moon:{name:'Moon',step:1.75,nightOut:12,flare:34,solar:20,ground:[220,8,41],
+    events:{clear:['Quiet sky','Nothing special tonight.'],flare:['Solar flare','Radiation storm tonight. Shield up and sleep in the safe zone.'],micro:['Micrometeorite shower','Tiny space rocks punch leaks in the base: up to -36 oxygen. Each wall blocks 12.'],quake:['Moonquake','Cables shake loose: -8 power tonight.'],cme:['Coronal mass ejection','A cloud of particles from the Sun: a smaller radiation storm tonight, and electronics glitch for -6 power. Sleep in the safe zone.'],shower:['Meteor shower','Bigger space rocks than usual: up to -48 oxygen tonight. Each wall blocks 12.']}}
+};
+const ACTIVITIES={jump:'Low-gravity long jump',golf:'Hit a golf ball (like Apollo 14)',rover:'Rover test drive'};
+const FACTS={
+  pic:'Curiosity has taken over a million raw images of Mars.',
+  dirt:'Perseverance seals rock and soil cores in tubes so scientists on Earth can study them later.',
+  meteor:'In 2005 the Opportunity rover found "Heat Shield Rock", the first meteorite ever found on another planet.',
+  water:'NASA\'s LCROSS mission found water ice in a dark crater near the Moon\'s south pole in 2009.',
+  marswater:'Orbiters have spotted water ice just under the surface of Mars in many places.',
+  life:'Perseverance explores Jezero Crater, an ancient lake bed, looking for signs of past microbial life.',
+  grow:'Astronauts on the International Space Station grew and ate red lettuce in 2015.',
+  health:'NASA\'s Twins Study compared astronaut Scott Kelly, after a year in space, with his twin brother on Earth.',
+  weather:'Curiosity\'s RAD instrument measures radiation on Mars every day.',
+  golf:'Astronaut Alan Shepard hit two golf balls on the Moon in 1971.',
+  send:'Mars rovers send most of their data to Earth through orbiters flying overhead.'
+};
+
+// ---------- real NASA data ----------
+const KEYK='outpost7-nasa-key',CACHEK='outpost7-nasa-cache-v1';
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Offline fallbacks: well-documented real events (used when the live API cannot be reached)
+const OFFLINE={
+  flares:[{cls:'X9.0',date:'2024-10-03'},{cls:'X8.7',date:'2024-05-14'},{cls:'X9.3',date:'2017-09-06'},{cls:'X2.8',date:'2023-12-14'}],
+  neo:{count:null,closest:{name:'99942 Apophis',km:31600,date:'2029-04-13',hazardous:true}},
+  photos:[],apod:[]
+};
+const NASA={data:{flares:null,neo:null,photos:null,apod:null},live:{},loading:false,
+  key(){try{return localStorage.getItem(KEYK)||'DEMO_KEY'}catch(e){return'DEMO_KEY'}},
+  get flares(){return this.data.flares&&this.data.flares.length?this.data.flares:OFFLINE.flares},
+  get neo(){return this.data.neo||OFFLINE.neo},
+  get pics(){return [...(this.data.photos||[]),...(this.data.apod||[])]}
+};
+const iso=d=>d.toISOString().slice(0,10);
+function readCache(){try{return JSON.parse(localStorage.getItem(CACHEK)||'{}')}catch(e){return{}}}
+function writeCache(c){try{localStorage.setItem(CACHEK,JSON.stringify(c))}catch(e){}}
+async function nasaGet(path){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  try{const r=await fetch(`https://api.nasa.gov/${path}${path.includes('?')?'&':'?'}api_key=${encodeURIComponent(NASA.key())}`,{signal:ctl.signal});
+    if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(t)}
+}
+const PARSE={
+  flares:j=>(Array.isArray(j)?j:[]).filter(f=>f.classType).map(f=>({cls:f.classType,date:(f.peakTime||f.beginTime||'').slice(0,10)})).reverse(),
+  neo:j=>{const all=Object.values(j.near_earth_objects||{}).flat();if(!all.length)return null;
+    const c=all.map(o=>({name:o.name,km:Math.round(+o.close_approach_data?.[0]?.miss_distance?.kilometers||Infinity),date:o.close_approach_data?.[0]?.close_approach_date,hazardous:o.is_potentially_hazardous_asteroid})).sort((a,b)=>a.km-b.km)[0];
+    return{count:all.length,hazardous:all.filter(o=>o.is_potentially_hazardous_asteroid).length,closest:c}},
+  photos:j=>(j.latest_photos||j.photos||[]).slice(0,25).map(p=>({title:`${p.rover?.name||'Rover'} ${p.camera?.full_name||'camera'}, sol ${p.sol}`,url:p.img_src,date:p.earth_date,kind:'mars'})),
+  apod:j=>(Array.isArray(j)?j:[j]).filter(a=>a.media_type==='image'&&a.url).map(a=>({title:a.title,url:a.url,date:a.date,kind:'apod'}))
+};
+async function loadNasa(force=false){
+  if(NASA.loading)return;NASA.loading=true;
+  const today=new Date(),past=new Date(Date.now()-30*864e5);
+  const Q={flares:`DONKI/FLR?startDate=${iso(past)}&endDate=${iso(today)}`,neo:`neo/rest/v1/feed?start_date=${iso(today)}&end_date=${iso(today)}`,
+    photos:'mars-photos/api/v1/rovers/curiosity/latest_photos',apod:'planetary/apod?count=8'};
+  const cache=readCache();
+  await Promise.all(Object.entries(Q).map(async([k,q])=>{
+    const c=cache[k];
+    if(!force&&c&&Date.now()-c.t<6*3600e3){NASA.data[k]=c.v;NASA.live[k]='cached';return}
+    try{const v=PARSE[k](await nasaGet(q));NASA.data[k]=v;NASA.live[k]='live';cache[k]={t:Date.now(),v}}
+    catch(e){if(c){NASA.data[k]=c.v;NASA.live[k]='cached'}else NASA.live[k]='offline'}
+  }));
+  writeCache(cache);NASA.loading=false;renderNasaStatus();if(S&&!$('#game').hidden)render();
+}
+function renderNasaStatus(){
+  const names={flares:'Solar flares',neo:'Asteroids',photos:'Mars photos',apod:'Space pictures'};
+  const html=Object.entries(names).map(([k,n])=>{const st=NASA.live[k]||(NASA.loading?'loading':'offline');
+    return `<span class="chip ${st==='live'||st==='cached'?'live':'off'}">${n}: ${st==='offline'?'built-in':st}</span>`}).join('');
+  $('#nasaStatus').innerHTML=html;const g=$('#gameNasa');if(g)g.innerHTML=html;
+}
+const flareRank=c=>({X:3,M:2,C:1,B:0}[String(c)[0]]||0)*100+parseFloat(String(c).slice(1)||0);
+const flareMult=c=>({X:1.25,M:1,C:0.8,B:0.6,A:0.5}[String(c)[0]]||1);
+function pickPhoto(){const L=NASA.pics.filter(p=>S.body==='mars'||p.kind==='apod');if(!L.length)return null;S.pi=(S.pi||0)+1;return L[(S.pi-1)%L.length]}
+
+// Real space weather from NOAA SWPC (public data, no key): GOES X-ray flares (7 days) and the planetary Kp index.
+// A new snapshot is taken every Monday. The weekly refresh moves "cur" into "prev" and writes the new week into "cur".
+// Format per week: from/to (YYYY-MM-DD, sol 1 = the day after "from"), taken (date of the snapshot),
+// flares: [["YYYY-MM-DDTHH:MM","class"],...] (peak time UTC, peak class), kpDays: {"YYYY-MM-DD": highest Kp that day}.
+// WX-SNAPSHOT-START
+const SPACEWX_LAST={src:'NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index)',from:'2026-10-28',to:'2026-11-04',taken:'2026-11-05',
+  flares:[["2026-10-28T08:39", "B8.4"], ["2026-10-28T11:09", "B6.3"], ["2026-10-28T12:52", "B6.4"], ["2026-10-30T13:22", "B7.3"], ["2026-10-30T16:07", "B5.7"], ["2026-10-30T22:38", "B5.1"], ["2026-10-30T23:24", "B3.4"], ["2026-10-30T23:42", "B3.6"], ["2026-10-31T01:11", "B4.5"], ["2026-10-31T03:21", "B3.2"], ["2026-10-31T06:13", "B3.4"], ["2026-10-31T09:14", "B6.3"], ["2026-10-31T15:20", "B3.6"], ["2026-10-31T15:42", "B3.8"], ["2026-10-31T19:13", "B4.1"], ["2026-10-31T19:55", "B5.9"], ["2026-10-31T20:37", "B3.6"], ["2026-10-31T20:51", "B4.0"], ["2026-11-01T12:36", "C1.1"], ["2026-11-01T14:01", "B5.2"], ["2026-11-01T18:38", "B4.7"], ["2026-11-02T06:08", "B7.7"], ["2026-11-02T16:44", "B4.2"], ["2026-11-02T21:04", "B5.6"], ["2026-11-02T22:08", "B8.0"], ["2026-11-03T06:15", "B4.8"], ["2026-11-03T16:40", "B4.2"], ["2026-11-03T18:28", "B4.7"], ["2026-11-03T19:25", "B4.6"], ["2026-11-03T22:39", "C1.1"], ["2026-11-04T06:54", "C1.2"]],
+  storm:{t:'2026-10-31T18:00',kp:6,g:'G2'},level:'Quiet',sunMult:0.9,kpDays:{'2026-10-31':6}};
+const SPACEWX={src:'NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index)',from:'2026-11-01',to:'2026-11-08',taken:'2026-11-09',
+  flares:[["2026-11-02T06:08", "B7.7"], ["2026-11-02T16:44", "B4.2"], ["2026-11-02T21:04", "B5.6"], ["2026-11-02T22:08", "B8.0"], ["2026-11-03T06:15", "B4.8"], ["2026-11-03T16:40", "B4.2"], ["2026-11-03T18:28", "B4.7"], ["2026-11-03T19:25", "B4.6"], ["2026-11-03T22:39", "C1.1"], ["2026-11-04T06:54", "C1.2"], ["2026-11-04T15:00", "B9.7"], ["2026-11-04T17:34", "C2.2"], ["2026-11-05T00:13", "B9.4"], ["2026-11-05T02:18", "B9.1"], ["2026-11-05T05:18", "B9.7"], ["2026-11-05T06:12", "B9.1"], ["2026-11-05T17:00", "C1.1"], ["2026-11-05T18:33", "M3.5"], ["2026-11-05T21:34", "C2.9"], ["2026-11-05T22:21", "C1.2"], ["2026-11-05T22:31", "C1.3"], ["2026-11-06T00:24", "C2.5"], ["2026-11-06T02:51", "C5.6"], ["2026-11-06T04:58", "C1.8"], ["2026-11-06T07:09", "C1.3"], ["2026-11-06T08:00", "C4.0"], ["2026-11-06T08:36", "C2.6"], ["2026-11-06T11:03", "C2.2"], ["2026-11-06T12:12", "C1.1"], ["2026-11-06T13:47", "C2.9"], ["2026-11-06T15:24", "C3.7"], ["2026-11-06T15:58", "C2.5"], ["2026-11-06T17:46", "C1.5"], ["2026-11-06T18:29", "C3.1"], ["2026-11-06T18:45", "C1.7"], ["2026-11-06T20:03", "C2.0"], ["2026-11-06T20:22", "C2.0"], ["2026-11-06T21:41", "C2.9"], ["2026-11-06T22:24", "C1.6"], ["2026-11-06T22:33", "C3.4"], ["2026-11-06T22:51", "C2.2"], ["2026-11-06T23:02", "C4.1"], ["2026-11-06T23:26", "C4.6"], ["2026-11-07T00:28", "C1.4"], ["2026-11-07T00:53", "C5.9"], ["2026-11-07T02:02", "C2.8"], ["2026-11-07T02:11", "C3.0"], ["2026-11-07T02:44", "C2.3"], ["2026-11-07T03:23", "C2.9"], ["2026-11-07T03:36", "C4.9"], ["2026-11-07T05:26", "C1.5"], ["2026-11-07T05:50", "C1.9"], ["2026-11-07T06:19", "C1.4"], ["2026-11-07T06:36", "C1.3"], ["2026-11-07T07:35", "C5.5"], ["2026-11-07T08:23", "C4.2"], ["2026-11-07T11:57", "C6.2"], ["2026-11-07T12:43", "M1.2"], ["2026-11-07T13:41", "C1.6"], ["2026-11-07T14:12", "C1.3"], ["2026-11-07T14:30", "C1.1"], ["2026-11-07T14:46", "C1.8"], ["2026-11-07T15:24", "C1.6"], ["2026-11-07T15:45", "C1.1"], ["2026-11-07T16:31", "C1.3"], ["2026-11-07T16:50", "C4.9"], ["2026-11-07T17:17", "M1.4"], ["2026-11-07T18:42", "M1.9"], ["2026-11-07T20:24", "C2.8"], ["2026-11-07T20:41", "C3.7"], ["2026-11-07T21:59", "C5.9"], ["2026-11-07T23:31", "C2.5"], ["2026-11-08T00:49", "C3.9"], ["2026-11-08T01:07", "C4.4"], ["2026-11-08T01:39", "C2.3"], ["2026-11-08T02:17", "C3.0"], ["2026-11-08T02:35", "C2.9"], ["2026-11-08T03:24", "C8.9"], ["2026-11-08T04:18", "C3.7"], ["2026-11-08T05:49", "C2.7"], ["2026-11-08T06:04", "C2.3"], ["2026-11-08T06:36", "C2.9"], ["2026-11-08T07:46", "M1.7"], ["2026-11-08T08:43", "C8.0"], ["2026-11-08T09:13", "C2.1"], ["2026-11-08T09:47", "C1.5"], ["2026-11-08T10:07", "C2.1"], ["2026-11-08T11:27", "C2.7"], ["2026-11-08T11:44", "C2.8"], ["2026-11-08T13:10", "C1.3"], ["2026-11-08T13:43", "C1.2"], ["2026-11-08T14:21", "C1.8"], ["2026-11-08T14:33", "C2.0"], ["2026-11-08T15:37", "M1.1"], ["2026-11-08T16:32", "C1.2"], ["2026-11-08T18:13", "C1.8"], ["2026-11-08T18:27", "M1.1"], ["2026-11-08T20:53", "C8.0"], ["2026-11-08T21:53", "C1.2"], ["2026-11-08T22:02", "C1.3"], ["2026-11-08T23:01", "C1.7"], ["2026-11-08T23:38", "C1.3"]],
+  storm:{t:'2026-11-07T18:00',kp:5,g:'G1'},kpDays:{"2026-11-02": 3, "2026-11-03": 2, "2026-11-04": 3, "2026-11-05": 2, "2026-11-06": 3, "2026-11-07": 5, "2026-11-08": 5}};
+// The Monday refresh adds SPACEWX_LAST (last week's SPACEWX, same fields) above this line. Until then there is no comparison.
+// WX-SNAPSHOT-END
+const WX_SRC='NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index)';
+const gScale=kp=>kp>=9?'G5':kp>=8?'G4':kp>=7?'G3':kp>=6?'G2':'G1';
+function wxDerive(w){
+  const big=w.flares.map(f=>f[1]).sort((a,b)=>flareRank(b)-flareRank(a))[0]||null;
+  const days=Object.entries(w.kpDays||{}).sort((a,b)=>b[1]-a[1]),top=days[0];
+  const stormDays=days.filter(([d,k])=>k>=5).length;
+  const cPlus=w.flares.filter(f=>/^[CMX]/.test(f[1])).length,b0=String(big||'A')[0];
+  const [level,sunMult]=b0==='X'?['Very active',1.25]:b0==='M'?['Active',1.1]:b0==='C'?(cPlus>=10?['Moderate',1]:['Quiet',0.9]):['Very quiet',0.85];
+  return Object.assign({},w,{src:WX_SRC,big,maxKp:top?top[1]:0,stormDays,storm:top&&top[1]>=5?{t:top[0]+'T00:00',kp:top[1],g:gScale(top[1])}:null,level:w.level||level,sunMult:w.sunMult||sunMult});
+}
+const wxNorm=w=>w&&Object.assign({},w,{kpDays:w.kpDays||(w.storm&&w.storm.t?{[w.storm.t.slice(0,10)]:w.storm.kp}:{})});
+let WX=wxDerive(wxNorm(SPACEWX)),WX_PREV=typeof SPACEWX_LAST!=='undefined'?wxNorm(SPACEWX_LAST):null;
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtD=d=>`${MON[+d.slice(5,7)-1]} ${+d.slice(8,10)}, ${d.slice(0,4)}`;
+const addDays=(d,n)=>new Date(Date.parse(d+'T00:00:00Z')+n*864e5).toISOString().slice(0,10);
+// Sol 1 to 7 replay the 7 real days after WX.from.
+function realDay(sol){const d=addDays(WX.from,Math.max(1,Math.min(7,sol)));
+  const fl=WX.flares.filter(f=>f[0].startsWith(d)),big=fl.map(f=>f[1]).sort((a,b)=>flareRank(b)-flareRank(a))[0];
+  const k=(WX.kpDays||{})[d];return{d,n:fl.length,big,kp:k>=5?k:null}}
+function realDayText(sol){const r=realDay(sol);
+  return `${fmtD(r.d)}: ${r.n?`${r.n} solar flare${r.n>1?'s':''}, biggest ${r.big}`:'no solar flares'}${r.kp?`. Geomagnetic storm on Earth (Kp ${r.kp}, ${gScale(r.kp)}): auroras, and static on the radio link, so sending data takes 50% longer today`:'. No geomagnetic storm on Earth (Kp under 5)'}.`}
+function weekText(){const W=WX,pct=Math.round(Math.abs(W.sunMult-1)*100);
+  return `${fmtD(W.from)} to ${fmtD(W.to)}: ${W.flares.length} solar flares, biggest ${W.big||'none'}. ${W.storm?`${W.stormDays} geomagnetic storm day${W.stormDays>1?'s':''}, strongest Kp ${W.storm.kp} (${W.storm.g}) on ${fmtD(W.storm.t.slice(0,10))}`:`No geomagnetic storms (highest Kp ${W.maxKp})`}. Sun activity: ${W.level}, so radiation storms in this game are ${W.sunMult===1?'normal strength':`${pct}% ${W.sunMult<1?'weaker':'stronger'}`}.`}
+// ---- weekly refresh + this week vs last week ----
+function wxCompare(prev,cur){if(!prev)return null;const P=wxDerive(wxNorm(prev)),C=cur,rows=[];
+  const cmp=(name,a,b,fmt=x=>x,lowerBetter=true)=>{const d=b>a?1:b<a?-1:0;rows.push({name,txt:`${fmt(a)} → ${fmt(b)}`,res:d===0?'same':(d<0)===lowerBetter?'better':'worse'})};
+  cmp('Solar flares',P.flares.length,C.flares.length);
+  cmp('Biggest flare',P.big?flareRank(P.big):0,C.big?flareRank(C.big):0,x=>x===flareRank(P.big||'')&&P.big?P.big:x===flareRank(C.big||'')&&C.big?C.big:'none');
+  cmp('Strongest geomagnetic storm (Kp)',P.maxKp,C.maxKp);
+  cmp('Geomagnetic storm days',P.stormDays,C.stormDays);
+  cmp('Radiation storm strength in game',Math.round(P.sunMult*100),Math.round(C.sunMult*100),x=>x+'%');
+  return{prev:P,rows}}
+function wxCompareHtml(c){if(!c)return '<small>This is the first weekly snapshot, so there is no last week to compare yet. After the next Monday snapshot you will see what got better and what got worse.</small>';
+  const col={better:'var(--good)',worse:'var(--bad)',same:'var(--muted)'},ic={better:'▲ better',worse:'▼ worse',same:'= same'};
+  return `<div style="display:grid;gap:4px"><b>This week vs last week (${fmtD(c.prev.from)} to ${fmtD(c.prev.to)})</b>${c.rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:10px"><span>${r.name}: ${r.txt}</span><span style="color:${col[r.res]};font-weight:700;white-space:nowrap">${ic[r.res]}</span></div>`).join('')}</div>`}
+function renderSpaceWx(){const el=$('#spacewxNote');if(!el)return;
+  const how=`NOAA snapshot taken ${fmtD(WX.taken||WX.to)}, updated every Monday`;
+  el.innerHTML=`<b>Real space weather.</b> ${esc(how)}: ${esc(weekText())}<div style="margin-top:6px">${wxCompareHtml(wxCompare(WX_PREV,WX))}</div>`;}
+
+let buildOpen=false;
+// Game modes, easiest to hardest. mult scales drains, storm damage and walking radiation.
+// The Moon has more places to explore, so its science target is 1.85x higher.
+const tgt=(M,body)=>Math.round(M.target*(body==='moon'?(M.moonX||1.85):1)/10)*10;
+const MODES={
+  cadet:{req:['hab','power'],name:'Cadet',crates:32,power:150,sol:300,mult:0.5,calm:2,target:760,moonX:1.26,survival:false,blurb:'Easiest. Very gentle weather and the longest days.'},
+  junior:{req:['hab','power','comms'],name:'Junior astronaut',crates:28,power:150,sol:240,mult:0.75,calm:1,target:690,moonX:1.26,survival:true,blurb:'Gentle weather. +5 survival points each sol.'},
+  commander:{req:['hab','power','comms','green'],name:'Commander',crates:25,power:150,sol:180,mult:1,calm:0,target:470,moonX:1.58,survival:false,blurb:'Full-strength storms.'},
+  veteran:{req:['hab','power','comms','green','med'],name:'Veteran',crates:22,power:135,sol:150,mult:1.15,calm:-1,target:340,moonX:1.79,survival:false,blurb:'Hardest. An extra radiation storm and harsher everything.'},
+  free:{req:[],name:'Free play',crates:40,power:150,sol:360,mult:0.75,calm:1,target:0,survival:false,noLose:true,blurb:'No target and you cannot lose. Just explore and build.'}
+};
+const MODE=()=>MODES[S.diff]||MODES.junior;
+// ---------- Ask Mission Control: offline knowledge base ----------
+// Each entry: [keywords separated by |, question, answer]. Answers are short, kid-friendly and checked against NASA facts.
+const KB=[
+// --- Mars basics
+['how long sol|mars day length|sol|mars day|day on mars|how long day mars','How long is a day on Mars?','A Mars day is called a sol. It lasts about 24 hours and 40 minutes, just a little longer than an Earth day.'],
+['mars year|year on mars|how long year mars','How long is a year on Mars?','A Mars year is 687 Earth days, almost 2 Earth years. Mars is farther from the Sun, so it takes longer to go around it.'],
+['mars gravity|gravity mars|weigh on mars|jump mars','How strong is gravity on Mars?','Mars gravity is about 38% of Earth\'s. If you weigh 30 kg on Earth, you would feel like 11 kg on Mars, so you could jump almost 3 times higher.'],
+['why mars red|red planet|mars red|color mars','Why is Mars red?','Mars dust and rocks contain iron that has rusted (iron oxide). Fine rusty dust covers the planet and even floats in the air, making it look red.'],
+['mars size|big mars|mars bigger|mars smaller','How big is Mars?','Mars is about half as wide as Earth, about 6,779 km across. You could fit about 6 or 7 Marses inside Earth.'],
+['far mars|distance mars|how far mars','How far away is Mars?','It changes because both planets orbit the Sun. At its closest, Mars is about 55 million km away. At its farthest, it is about 400 million km away.'],
+['get to mars|travel mars|trip mars|fly to mars|how long mars','How long does it take to get to Mars?','About 7 months with today\'s rockets. Missions launch every 26 months, when Earth and Mars line up best.'],
+['oxygen mars|mars air made|mars air|mars atmosphere|breathe mars|air mars','Can you breathe on Mars?','No. Mars air is about 95% carbon dioxide and is very thin, less than 1% as thick as Earth\'s. Astronauts need spacesuits and habitats with their own air.'],
+['mars temperature|cold mars|hot mars|mars weather temperature','How cold is Mars?','Very cold! The average is about -60 °C (-80 °F). A summer afternoon near the equator can reach about 20 °C, but nights drop far below freezing.'],
+['mars moons|phobos|deimos','Does Mars have moons?','Yes, two small ones: Phobos and Deimos. They are lumpy, potato-shaped rocks only about 22 km and 12 km across.'],
+['olympus mons|volcano mars|biggest volcano|tallest mountain','What is the biggest volcano in the solar system?','Olympus Mons on Mars. It is about 22 km tall, roughly 2.5 times as tall as Mount Everest.'],
+['valles marineris|canyon mars|grand canyon','Does Mars have canyons?','Yes. Valles Marineris is a canyon system about 4,000 km long, as long as the United States is wide.'],
+['dust storm|mars storm|storm mars','How big are Mars dust storms?','Some cover the whole planet for weeks. In 2018 a planet-wide dust storm blocked sunlight to the Opportunity rover\'s solar panels and ended its mission.'],
+['dust devil|whirlwind','Does Mars have dust devils?','Yes. Spinning dust devils race across Mars. Sometimes they even cleaned dust off the solar panels of the Spirit and Opportunity rovers.'],
+['snow mars|snow on mars','Does it snow on Mars?','Yes! NASA\'s Phoenix lander saw water-ice snow falling from clouds in 2008. Mars also has carbon dioxide (dry ice) snow near the poles.'],
+['sunset mars|blue sunset|sky color mars|mars sky','What color is the sky on Mars?','In the day the sky is a dusty butterscotch color. Sunsets on Mars look blue, because Mars dust scatters blue light toward the setting Sun.'],
+['mars magnetic field|magnetic field mars|why radiation mars','Why does Mars have more radiation than Earth?','Earth has a thick atmosphere and a strong magnetic field that block most space radiation. Mars lost its global magnetic field billions of years ago and has very thin air, so more radiation reaches the ground.'],
+['message mars|signal mars|talk to earth|delay mars|call earth','How long does a message take between Mars and Earth?','Radio signals take between about 3 and 22 minutes one way, depending on where the planets are. So you cannot have a normal conversation with Mission Control!'],
+// --- Water & life
+['water mars|ice mars|find water mars','Is there water on Mars?','Yes, mostly frozen. There is water ice in the polar caps and under the ground in many places. Long ago, rivers and lakes flowed on Mars.'],
+['lakes mars|lake mars|lakes on mars|jezero|ancient lake|river mars|riverbed','Were there lakes on Mars?','Yes. Perseverance is exploring Jezero Crater, which held a lake about 3.5 billion years ago. You can still see the delta where a river flowed in.'],
+['life on mars|martians|anything living mars|life mars|aliens|alien|martian life|evidence life|past life','Is there life on Mars?','Nobody has found life on Mars yet. Scientists look for signs of tiny microbes that might have lived there long ago, when Mars had water. Perseverance is collecting rock samples to help answer this.'],
+['sample return|rock samples|perseverance samples|sample tubes','What happens to Perseverance\'s rock samples?','Perseverance seals rock and soil cores in tubes. NASA and ESA are planning ways to bring samples to Earth so scientists can study them with powerful lab tools.'],
+['ice on moon|moon ice|water moon|ice moon|lunar water|lcross','Is there water on the Moon?','Yes, as ice hiding in very cold, dark craters near the poles. In 2009 NASA\'s LCROSS mission crashed into one and detected water in the spray.'],
+['why water important|need water|water astronaut','Why is finding water so important?','Water is for drinking, growing plants, and shielding radiation. It can also be split into oxygen to breathe and hydrogen for rocket fuel. Finding it means carrying less from Earth.'],
+// --- Moon
+['moon gravity|gravity moon|weigh moon|jump moon','How strong is gravity on the Moon?','The Moon\'s gravity is about one-sixth (17%) of Earth\'s. Astronauts on Apollo bounced and hopped across the surface.'],
+['far moon|distance moon|how far moon','How far away is the Moon?','About 384,400 km on average. Light takes about 1.3 seconds to travel from the Moon to Earth.'],
+['get to moon|trip moon|travel moon|how long moon','How long does it take to get to the Moon?','About 3 days. The Apollo astronauts took about 3 days to get there.'],
+['moon day|lunar day|day on moon|night moon','How long is a day on the Moon?','From one sunrise to the next takes about 29.5 Earth days. That means about 2 weeks of sunlight and then about 2 weeks of darkness.'],
+['moon temperature|cold moon|hot moon','How hot and cold does the Moon get?','In sunlight the surface can reach about 120 °C, hotter than boiling water. At night it drops to about -130 °C. Some shadowed craters are colder than -200 °C.'],
+['moon atmosphere|air moon|breathe moon','Does the Moon have air?','Almost none. With no air, there is no wind, no weather and no sound. Footprints can last for millions of years.'],
+['moon same side|far side|dark side','Why do we always see the same side of the Moon?','The Moon spins exactly once each time it orbits Earth, so the same side always faces us. The far side is not dark. It gets sunlight too, we just never see it from Earth.'],
+['moon form|moon made|how moon formed','How did the Moon form?','Scientists think a Mars-sized object crashed into the young Earth about 4.5 billion years ago. The debris came together to make the Moon.'],
+['moon size|big moon','How big is the Moon?','The Moon is about 3,474 km across, a little more than one-quarter as wide as Earth.'],
+['earthquakes moon|earthquake moon|shake moon|moonquake|quake','Are there earthquakes on the Moon?','Yes, moonquakes! Seismometers left by Apollo astronauts recorded thousands of them. Some are caused by the Moon slowly shrinking as it cools.'],
+['lunar dust|moon dust|regolith|soil','What is regolith?','Regolith is the loose dust and broken rock covering the Moon and Mars. Moon dust is very sharp and clingy because there is no wind or water to smooth it.'],
+['neil armstrong|first man moon|first person moon|apollo|first moon|walk on moon|armstrong|aldrin|landed moon','Who walked on the Moon first?','Neil Armstrong, then Buzz Aldrin, on July 20, 1969, during Apollo 11. Twelve astronauts walked on the Moon between 1969 and 1972.'],
+['artemis|back to moon|return moon','What is Artemis?','Artemis is NASA\'s program to send astronauts back to the Moon, including the first woman and first person of color to walk there, and to explore the south pole where there is ice.'],
+['golf moon|alan shepard','Did someone play golf on the Moon?','Yes! Astronaut Alan Shepard hit two golf balls on the Moon during Apollo 14 in 1971.'],
+// --- Rovers & missions
+['curiosity','What is the Curiosity rover?','Curiosity is a car-sized NASA rover that landed in Gale Crater on Mars in 2012. It studies rocks to learn whether Mars could ever have supported life.'],
+['perseverance|percy','What is the Perseverance rover?','Perseverance landed in Jezero Crater in 2021. It looks for signs of ancient life and collects rock samples.'],
+['ingenuity|helicopter','Is there a helicopter on Mars?','There was! Ingenuity made the first powered flight on another planet on April 19, 2021, and flew 72 times before its mission ended in 2024.'],
+['opportunity|spirit|oppy','What were Spirit and Opportunity?','Twin rovers that landed in 2004. They were planned to last 90 sols. Opportunity kept going for about 15 years!'],
+['first rover|sojourner','What was the first Mars rover?','Sojourner, a small rover about the size of a microwave oven, landed with Mars Pathfinder in 1997.'],
+['how rovers power|rover power|rtg|nuclear battery','How are Mars rovers powered?','Spirit and Opportunity used solar panels. Curiosity and Perseverance use a nuclear power source that turns heat from decaying plutonium into electricity, so dust storms do not stop them.'],
+['how many pictures|rover photos|rover camera','How many pictures have rovers taken?','Curiosity alone has sent back more than a million raw images of Mars.'],
+['international space station|iss|space station|international space station','What is the International Space Station?','A science lab orbiting Earth about 400 km up. It goes around Earth about every 90 minutes, about 16 times a day, at about 28,000 km/h. People have lived on it nonstop since 2000.'],
+['beam|inflatable','Can you build with inflatable modules?','Yes. NASA attached BEAM, an inflatable room made of strong fabric layers, to the ISS in 2016 to test the idea. In the game, that is the Kevlar inflatable material.'],
+// --- Radiation & space weather
+['radiation|what is radiation|space radiation','What is space radiation?','It is energy and fast particles zooming through space, from the Sun and from exploded stars far away. Too much can harm the human body, so astronauts need shielding.'],
+['solar flare|flare','What is a solar flare?','A sudden burst of energy from the Sun. Flares are graded A, B, C, M and X, and each letter is 10 times stronger than the one before. X-class flares are the biggest.'],
+['solar particle event|spe|radiation storm','What is a solar particle event?','A storm of very fast particles blasted out by the Sun. It can raise radiation levels quickly, so astronauts on the Moon or Mars need to get into a shelter.'],
+['cosmic ray|cosmic rays|galactic','What are cosmic rays?','Very fast particles from exploded stars far outside our solar system. They are hard to block completely, which is one reason long trips to Mars are risky.'],
+['blocks space radiation|blocks radiation|best shield|radiation best|shield|shielding|block radiation|protect radiation','What blocks space radiation best?','Thick layers of material, especially ones with lots of hydrogen like water and plastic (polyethylene). Piling regolith (soil) over a habitat helps too.'],
+['safe from space radiation|why safe on earth|why are we safe|safe radiation earth|safe from radiation|earth protect|why safe earth|magnetosphere','Why are we safe from space radiation on Earth?','Earth\'s magnetic field steers many charged particles away, and our thick atmosphere absorbs much of the rest.'],
+['aurora|northern lights','What causes auroras?','Particles from the Sun hit Earth\'s magnetic field and atmosphere near the poles, making the air glow green, red and purple.'],
+['sun|how far sun|light from sun','How long does sunlight take to reach Earth?','About 8 minutes and 20 seconds. The Sun is about 150 million km away.'],
+// --- Life support, food, health
+['oxygen|breathe|air astronaut','How do astronauts get oxygen?','On the ISS, machines split water into hydrogen and oxygen. On Mars, NASA\'s MOXIE experiment made oxygen from the carbon dioxide air, about 122 grams in total.'],
+['how much water|how much oxygen|how much food|use per day|daily use|each day use','How much does an astronaut use each day?','NASA plans for about 0.84 kg of oxygen, 1.8 kg of food and about 3 L of drinking water per astronaut each day, plus water for washing. In this game that is 16 oxygen, 12 food and 16 water a sol.'],
+['moxie','What was MOXIE?','A toaster-sized experiment on Perseverance that made oxygen from Mars air between 2021 and 2023. It proved future astronauts could make oxygen on Mars.'],
+['recycle water|drink water|urine|pee','Do astronauts recycle water?','Yes! The ISS recycles about 98% of its water, including sweat, breath moisture and even urine, into clean drinking water.'],
+['food space|eat space|grow food|plants space|lettuce|veggie','Can astronauts grow food in space?','Yes. In 2015 astronauts on the ISS ate red romaine lettuce they grew in a plant chamber called Veggie.'],
+['plants moon soil|lunar soil plants|grow moon soil','Can plants grow in Moon soil?','In 2022 scientists grew small plants in real Apollo Moon soil for the first time. They grew, but more slowly and with more stress than in Earth soil.'],
+['plants mars soil|grow mars','Can plants grow in Mars soil?','Mars soil has chemicals called perchlorates that are harmful, so it would need to be washed or treated first. Scientists test plants in fake Mars soil on Earth.'],
+['health|body space|bones|muscles','What happens to an astronaut\'s body in space?','In low gravity, bones and muscles weaken, body fluids shift toward the head, and eyesight can change. Astronauts exercise about 2 hours a day to stay strong.'],
+['twins|twin study|scott kelly','What was the NASA Twins Study?','Astronaut Scott Kelly spent 340 days on the ISS while his identical twin Mark stayed on Earth. Doctors compared them to learn how space changes the body.'],
+['sleep space|sleep astronaut','How do astronauts sleep?','On the ISS they sleep in small cabins inside sleeping bags strapped to the wall, so they do not float around.'],
+['spacesuit|space suit','Why do astronauts need spacesuits?','A spacesuit is like a tiny spacecraft. It gives air, keeps the right pressure and temperature, and protects from dust and some radiation.'],
+['spacewalk|eva','What is a spacewalk?','When an astronaut goes outside the spacecraft in a spacesuit. NASA calls it an EVA, short for extravehicular activity.'],
+// --- Meteorites & asteroids
+['meteorite|meteor|meteoroid|shooting star','What is the difference between a meteoroid, meteor and meteorite?','A meteoroid is a space rock. A meteor is the streak of light when it burns in the air. A meteorite is a piece that lands on the ground.'],
+['meteorite mars|heat shield rock','Have rovers found meteorites on Mars?','Yes. In 2005 Opportunity found "Heat Shield Rock", an iron-nickel meteorite, the first ever found on another planet.'],
+['mars meteorite earth|rock from mars|alh84001','Do we have rocks from Mars on Earth?','Yes. Some meteorites found on Earth were blasted off Mars by impacts long ago. Scientists know because gas trapped inside matches Mars\'s air.'],
+['asteroid|neo|near earth','What is a near-Earth asteroid?','An asteroid whose orbit brings it fairly close to Earth\'s orbit. NASA tracks thousands of them to make sure none are a danger.'],
+['apophis','What is Apophis?','An asteroid about 340 m wide. On April 13, 2029 it will pass about 32,000 km from Earth, closer than some satellites, but it will not hit us.'],
+['micrometeorite|space dust','What are micrometeorites?','Tiny bits of space rock, often smaller than a grain of sand, moving very fast. With no air on the Moon, they hit the surface directly and can damage equipment.'],
+['crater','How are craters made?','When an asteroid or meteorite hits the ground at high speed, the explosion digs a bowl-shaped crater. The Moon has so many because it has no air or weather to erase them.'],
+// --- Solar system general
+['how many planet|number planets|planets|how many planets','How many planets are in our solar system?','Eight: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus and Neptune. Pluto is called a dwarf planet.'],
+['pluto|pluto planet|is pluto|dwarf planet','Why is Pluto not a planet?','In 2006 astronomers decided a planet must clear its orbit of other objects. Pluto shares its zone with many icy objects, so it is called a dwarf planet.'],
+['largest planet|biggest planet|jupiter','What is the biggest planet?','Jupiter. More than 1,300 Earths could fit inside it.'],
+['sun star|star|is the sun a star','Is the Sun a star?','Yes! The Sun is a medium-sized star. It looks big and bright because it is so much closer to us than other stars.'],
+['black holes|inside black hole|black hole','What is a black hole?','A place where gravity is so strong that nothing, not even light, can escape. They form when giant stars collapse.'],
+['galaxy|milky way','What galaxy do we live in?','The Milky Way, a spiral galaxy with hundreds of billions of stars.'],
+['light year','What is a light-year?','The distance light travels in one year, about 9.5 trillion km. It measures distance, not time.'],
+['rockets fly|how rocket launch|rocket engine|rocket|how rockets work','How do rockets work?','Rockets push hot gas out the back very fast, and that pushes the rocket forward. It works even in space, where there is no air to push against.'],
+['be an astronaut|astronaut job|astronaut|become astronaut','How do you become an astronaut?','NASA astronauts usually study science, engineering, math or medicine, gain years of experience, pass tough health tests and train for about 2 years. Being curious and working as a team matter a lot!'],
+// --- Power & building
+['solar panel|solar power','How do solar panels work on Mars?','They turn sunlight into electricity. Mars gets less than half the sunlight Earth does, and dust can cover the panels, so missions need extra panels or other power.'],
+['fission|nuclear reactor|kilopower','Why use a nuclear reactor on the Moon or Mars?','A small fission reactor makes steady power day and night, even during dust storms or the 2-week lunar night. NASA is developing one called Fission Surface Power.'],
+['3d print|printed habitat|3d-printed','Can we 3D-print houses on Mars?','NASA\'s 3D-Printed Habitat Challenge tested printing shelters from material like Mars soil, so astronauts would not have to bring all their building supplies from Earth.'],
+['aluminum|aluminium','Why build spacecraft from aluminum?','Aluminum is light and strong, so it is cheaper to launch. Most of the ISS modules are made of aluminum alloys.'],
+['polyethylene|plastic shield','Why is polyethylene a good radiation shield?','Polyethylene plastic has lots of hydrogen, and hydrogen is very good at slowing space radiation. NASA uses it for shielding on the ISS.'],
+['kevlar','What is Kevlar?','A very strong fabric used in bulletproof vests. Layers of strong fabric like it are used in inflatable space habitats.'],
+// --- Game help
+['how win|win game|goal','How do I win the game?','Survive all 7 sols, build every required module for your mode, and earn enough science points to reach the target. In Free play there is no target, just explore.'],
+['meters|meter|bars','What do the three meters mean?','Radiation shield shows how protected your astronaut is. Life support is the average of water, oxygen and food, shown under the meter. Power runs everything. If water, oxygen or food runs out, the rest drain fast. The mission ends when life support or the radiation shield reaches zero.'],
+['safe zone|blue zone|blue edge','What is the safe zone?','Tiles next to your rocket or any module, shown with a blue edge. Walking outside it costs radiation, and sleeping outside it at night is risky.'],
+['timer|night|end sol|time','How does the timer work?','Each sol has a countdown. When it hits zero, night falls by itself. Get back to the safe zone before then! You can pause with the Pause button.'],
+['science points|points|earn points|score','How do I earn science points?','Do tasks at rock fields, meteorites, ice, outcrops, the riverbed and your modules. Harder tasks give more points but take longer and use more power. Check the How to Play table.'],
+['crates|crate','What are crates?','Crates are the supplies you brought from Earth for building. Each module costs crates, so choose carefully. Bigger is not better, smart is better!'],
+['material|materials|which material','Which building material should I use?','Polyethylene + water is the safest against radiation, Kevlar is cheap and fast, 3D-printed regolith saves crates, and aluminum is the all-rounder. Mix them!'],
+['power run out|no power|save power|keep power','What if my power runs low?','You must keep enough power for tonight, so some buttons lock. Build solar panels or a reactor. If power hits zero at night, water freezes and the air recycler stops, so water and oxygen drop fast.'],
+['weather station|forecast','How do I see tomorrow\'s weather?','Build a weather station. It shows tomorrow\'s forecast and lets you write a weather and radiation log for 25 points.'],
+['send data|comms|comms dish','How do I send data to Earth?','Build a comms dish, study something in the rocket lab to make data, then use the dish. It is a Challenge task worth 30 points.'],
+['tiers|levels|very easy|challenge|hard task','What do Very easy, Easy, Medium, Hard and Challenge mean?','They show how hard a task is, based on its points. Harder tasks take longer and use more power.'],
+['modes|cadet|veteran|free play|junior|commander|difficulty','What are the game modes?','Cadet is the easiest, then Junior astronaut, Commander, and Veteran, the hardest. Free play has no target and you cannot lose.'],
+['nasa data|real data|live data','Does the game use real NASA data?','Yes, when it is online with an API key: real solar flares, near-Earth asteroids, rover photos and space pictures from NASA\'s open APIs.'],
+// --- More space questions (v15)
+["mercury|closest planet sun|smallest planet","What is Mercury like?","Mercury is the smallest planet and the closest to the Sun. It has almost no air, so days reach about 430 C and nights drop to about -180 C. A year there is only 88 Earth days."],
+["venus|hottest planet","Why is Venus the hottest planet?","Venus has a thick carbon dioxide atmosphere that traps heat like a blanket. Its surface is about 465 C, hot enough to melt lead, even though Mercury is closer to the Sun."],
+["venus spin backwards|venus backwards|venus day","Does Venus spin backwards?","Yes! Venus spins the opposite way to most planets, and very slowly. One Venus day (243 Earth days) is longer than its year (225 Earth days)."],
+["earth special|why earth life|goldilocks|habitable zone","Why can life live on Earth?","Earth is in the Sun's habitable zone, where it is not too hot and not too cold for liquid water. It also has air to breathe and a magnetic field that blocks harmful radiation."],
+["earth age|how old earth","How old is Earth?","Earth formed about 4.5 billion years ago, along with the rest of the solar system."],
+["earth spin|earth rotate|why day and night|day and night","Why do we have day and night?","Earth spins once about every 24 hours. The side facing the Sun has day, and the side facing away has night."],
+["seasons|why seasons|summer winter","Why do we have seasons?","Earth is tilted about 23.5 degrees. For part of the year your half of Earth leans toward the Sun (summer) and for part it leans away (winter). It is not because Earth gets closer to the Sun."],
+["mars seasons|seasons mars","Does Mars have seasons?","Yes. Mars is tilted about 25 degrees, close to Earth's tilt, so it has seasons. Each season lasts about twice as long because a Mars year is almost 2 Earth years."],
+["jupiter storm|great red spot|red spot","What is the Great Red Spot?","It is a giant storm on Jupiter that is wider than Earth. People have watched it for over 150 years, and its winds blow faster than 400 km per hour."],
+["jupiter moons|moons jupiter|how many moons jupiter","How many moons does Jupiter have?","Jupiter has more than 90 known moons. The four biggest, Io, Europa, Ganymede and Callisto, were discovered by Galileo in 1610."],
+["saturn rings|rings saturn|rings made","What are Saturn's rings made of?","Saturn's rings are made of billions of chunks of ice and rock, from tiny grains to pieces as big as a house. They are very wide but mostly only about 10 meters thick."],
+["saturn float|saturn water","Could Saturn float in water?","Saturn is the least dense planet, less dense than water. So, in a giant imaginary bathtub, it would float!"],
+["saturn|saturn moons","What is Saturn like?","Saturn is a gas giant, the second biggest planet, famous for its bright rings. It has more than 140 known moons."],
+["uranus|sideways planet","Why does Uranus spin on its side?","Uranus is tipped over by about 98 degrees, so it rolls around the Sun like a ball. Scientists think a giant collision long ago knocked it over."],
+["neptune|windiest planet","What is Neptune like?","Neptune is the farthest planet from the Sun. It is an icy blue giant with the fastest winds in the solar system, over 2,000 km per hour."],
+["ice giant|gas giant","What is the difference between a gas giant and an ice giant?","Jupiter and Saturn are gas giants, made mostly of hydrogen and helium. Uranus and Neptune are ice giants, with more water, ammonia and methane ices inside."],
+["rings other planets|do other planets have rings","Do other planets have rings?","Yes! Jupiter, Uranus and Neptune all have rings too. They are just much fainter than Saturn's."],
+["planet order|order of planets|planets in order","What order are the planets in?","From the Sun: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune. A fun way to remember: My Very Excellent Mother Just Served Us Nachos."],
+["rocky planet|terrestrial planet","Which planets are rocky?","Mercury, Venus, Earth and Mars are the rocky planets. They have solid surfaces you could stand on."],
+["planet most moons|most moons","Which planet has the most moons?","Saturn has the most known moons, more than 140. Jupiter is second. The count keeps going up as telescopes find small ones."],
+["hottest place solar system|coldest place solar system","What is the hottest and coldest place in the solar system?","The Sun's core is the hottest, about 15 million C. Some of the coldest spots are shadowed craters on the Moon, at about -250 C."],
+["planet day longest|longest day","Which planet has the longest day?","Venus. One spin takes 243 Earth days."],
+["planet shortest day|fastest spin","Which planet has the shortest day?","Jupiter spins the fastest. A day there lasts just under 10 hours."],
+["europa","What is special about Europa?","Europa is one of Jupiter's moons. Under its icy crust is a salty ocean with more water than all of Earth's oceans. NASA's Europa Clipper is going to study it."],
+["enceladus|geysers","What is Enceladus?","Enceladus is a small icy moon of Saturn. It shoots geysers of water from an ocean under its ice. The Cassini spacecraft flew through them."],
+["titan","What is Titan like?","Titan is Saturn's biggest moon. It has a thick orange atmosphere and lakes of liquid methane. NASA's Dragonfly drone will fly there."],
+["io|volcano moon","What is Io?","Io is a moon of Jupiter and the most volcanic place in the solar system. It has hundreds of active volcanoes."],
+["ganymede|biggest moon","What is the biggest moon in the solar system?","Ganymede, a moon of Jupiter. It is bigger than the planet Mercury and has its own magnetic field."],
+["phobos falling|phobos crash","Will Phobos crash into Mars?","Phobos slowly spirals closer to Mars, about 2 meters every 100 years. In roughly 50 million years it may break apart into a ring or crash into Mars."],
+["how many moons|moons in solar system","How many moons are in the solar system?","Hundreds! Planets have nearly 300 known moons, and dwarf planets and asteroids have more. Earth has just one."],
+["triton","What is Triton?","Triton is Neptune's biggest moon. It orbits backwards and has geysers of nitrogen. It is one of the coldest places we have measured."],
+["charon","What is Charon?","Charon is Pluto's biggest moon. It is about half the size of Pluto, so the two orbit each other almost like a double planet."],
+["moon change shape|moon shape|shape moon|moon phases|phases|crescent|full moon|new moon|half moon","Why does the Moon change shape?","The Moon does not really change shape. As it orbits Earth, we see different amounts of its sunlit side. That gives us new moon, crescent, half, gibbous and full moon."],
+["moon glow|moon light|moon shine","Does the Moon make its own light?","No. The Moon shines because it reflects sunlight, like a giant mirror made of grey rock."],
+["moon moving away|moon drifting","Is the Moon moving away from Earth?","Yes, about 3.8 centimeters every year, about as fast as your fingernails grow. Scientists measure it with lasers bounced off mirrors that Apollo astronauts left."],
+["moon seas|maria|dark spots moon","What are the dark spots on the Moon?","They are called maria, Latin for seas. They are not water. They are huge plains of dark lava that cooled billions of years ago."],
+["moon south pole|shackleton","Why go to the Moon's south pole?","Some craters at the south pole never get sunlight, so they stay cold enough to keep water ice. Artemis astronauts plan to explore there."],
+["caves on the moon|caves on mars|caves on the moon or mars|caves moon|caves mars|lava tubes|lava tube|moon caves|caves","Are there caves on the Moon or Mars?","Yes. Orbiters have found pits that lead into lava tubes, tunnels made by old lava flows. They could one day shelter astronauts from radiation."],
+["footprints moon|footprints last","Are the astronauts' footprints still on the Moon?","Most likely yes. The Moon has no wind or rain, so the Apollo footprints could last for millions of years."],
+["moon smell|smell moon dust","What does Moon dust smell like?","Apollo astronauts said Moon dust smelled like spent gunpowder after they brought it inside the lander."],
+["moon flags|flag moon","Are the flags still on the Moon?","Photos from the Lunar Reconnaissance Orbiter show most Apollo flags still standing, but the strong sunlight has probably bleached them white."],
+["supermoon","What is a supermoon?","A supermoon is a full moon that happens when the Moon is near its closest point to Earth, so it looks a bit bigger and brighter."],
+["blue moon","What is a blue moon?","A blue moon usually means the second full moon in one calendar month. It is not really blue!"],
+["tides|ocean tides","How does the Moon cause tides?","The Moon's gravity pulls on Earth's oceans and makes them bulge. As Earth spins, coastlines pass through the bulges, giving high and low tides."],
+["people on moon|how many people moon|how many walked moon","How many people have walked on the Moon?","12 astronauts walked on the Moon during the Apollo missions from 1969 to 1972."],
+["last person moon|last moon landing|apollo 17","Who was the last person on the Moon?","Gene Cernan of Apollo 17, in December 1972."],
+["apollo 13","What happened on Apollo 13?","In 1970 an oxygen tank exploded on the way to the Moon. The crew could not land, but they and Mission Control worked together and got safely home."],
+["first land moon|land on moon when|year moon landing|apollo 11|moon landing date|when moon landing","When did people first land on the Moon?","Apollo 11 landed on July 20, 1969. Neil Armstrong and Buzz Aldrin walked on the Moon while Michael Collins orbited above."],
+["moon rocks|moon samples","Did astronauts bring Moon rocks back?","Yes. Apollo astronauts brought back 382 kg of Moon rocks and soil. Scientists still study them today."],
+["landed far side|far side moon landing|chang e|change|china moon|far side landing","Has anyone landed on the far side of the Moon?","Yes. China's Chang'e 4 landed there in 2019, the first ever. Chang'e 6 brought back the first samples from the far side in 2024."],
+["chandrayaan|india moon","What is Chandrayaan?","Chandrayaan is India's Moon program. Chandrayaan-3 landed near the Moon's south pole in 2023."],
+["gateway|lunar gateway","What is Gateway?","Gateway is a planned small space station that will orbit the Moon. Astronauts can stop there on Artemis missions."],
+["sls|space launch system|orion","What are SLS and Orion?","SLS is NASA's giant Moon rocket. Orion is the capsule on top that carries astronauts. They flew together on Artemis I in 2022."],
+["polar caps|mars ice caps|dry ice","Does Mars have ice caps?","Yes, at both poles. They are made of water ice, topped with frozen carbon dioxide (dry ice) that grows in winter and shrinks in summer."],
+["earthquakes mars|mars earthquake|earthquake mars|marsquake|insight","Does Mars have earthquakes?","Yes, they are called marsquakes. NASA's InSight lander recorded more than 1,300 of them between 2018 and 2022."],
+["viking","What were the Viking landers?","Viking 1 and 2 were NASA's first successful Mars landers, in 1976. They sent back the first close-up pictures of the Martian surface."],
+["phoenix lander","What did the Phoenix lander find?","In 2008 Phoenix landed near Mars' north pole, dug into the ground and found water ice just under the surface."],
+["where is the curiosity rover|curiosity now|where curiosity|where is curiosity|gale crater|mount sharp","Where is the Curiosity rover?","Curiosity landed in Gale Crater in 2012 and is climbing Mount Sharp, a mountain of rock layers that tell the history of Mars' water."],
+["jezero","Why did Perseverance land in Jezero Crater?","Jezero once held a lake with a river delta. Deltas on Earth are great at saving signs of life, so it is a good place to look for ancient microbes."],
+["mars clouds|clouds mars","Does Mars have clouds?","Yes. Mars has thin clouds of water ice, and even clouds of dry ice high up."],
+["mars wind|wind mars","How strong is the wind on Mars?","Wind can blow over 100 km per hour, but the air is so thin you would only feel a gentle push."],
+["mars sunrise|sun from mars|sun look mars","How big does the Sun look from Mars?","The Sun looks about two thirds as wide as it does from Earth, because Mars is farther away."],
+["terraform|terraforming","Could we make Mars like Earth?","Changing a whole planet, called terraforming, would take a very long time and technology we do not have. For now, explorers will live in sealed habitats."],
+["mars orbiters|mro|maven|mars reconnaissance","Are there spacecraft orbiting Mars?","Yes. NASA's Mars Reconnaissance Orbiter, MAVEN and Mars Odyssey, plus orbiters from Europe, India, China and the UAE, study Mars from above."],
+["tianwen|zhurong|china mars","Has China landed on Mars?","Yes. China's Tianwen-1 mission put the Zhurong rover on Mars in 2021."],
+["mars time zone|mars clock|mars time","How do scientists keep time on Mars?","Mission teams use Mars time, called local solar time. The team for a new rover sometimes lives on Mars time, so their day shifts about 40 minutes later every Earth day."],
+["live on mars|people mars|humans mars|when humans mars","When will people go to Mars?","NASA hopes to send astronauts to Mars in the 2030s or later. First, Artemis missions to the Moon test the skills and gear they will need."],
+["mars soil toxic|perchlorate","Is Mars dirt safe?","Mars soil contains salts called perchlorates that are harmful to people. Astronauts would need to clean their suits and wash the soil before growing food in it."],
+["mars rock names|name rocks","Why do Mars rocks have funny names?","Rover scientists nickname interesting rocks so they can talk about them easily, like Rocknest or Cheyava Falls."],
+["mars smell|what mars smell","What would Mars smell like?","We do not know for sure. Scientists guess it might smell a bit like sulfur or rotten eggs because of chemicals in the soil and air."],
+["sun size|how big sun|sun bigger earth","How big is the Sun?","The Sun is about 109 times wider than Earth. About 1.3 million Earths could fit inside it."],
+["sun temperature|how hot sun","How hot is the Sun?","The surface is about 5,500 C, and the core is about 15 million C."],
+["sun made of|sun gas|sun burn","What is the Sun made of?","The Sun is a giant ball of hot hydrogen and helium. In its core, hydrogen fuses into helium and releases huge amounts of energy as light and heat."],
+["sunspots|sun spots","What are sunspots?","Sunspots are cooler, darker patches on the Sun where strong magnetic fields poke through. Flares often explode near them."],
+["solar wind","What is the solar wind?","A steady stream of charged particles blowing out from the Sun in every direction at about 400 km per second."],
+["solar cycle|solar maximum","What is the solar cycle?","The Sun's activity rises and falls about every 11 years. At solar maximum there are more sunspots, flares and storms."],
+["cme|coronal mass ejection","What is a coronal mass ejection?","A CME is a huge cloud of hot gas and magnetic field thrown off the Sun. It can carry billions of tons of material and cause radiation storms and auroras."],
+["space weather","What is space weather?","Space weather means changing conditions in space caused by the Sun, like flares, CMEs and the solar wind. It can affect astronauts, satellites and power grids."],
+["solar eclipse","What is a solar eclipse?","A solar eclipse happens when the Moon passes between the Sun and Earth and blocks the Sun. Never look at the Sun without proper eclipse glasses."],
+["lunar eclipse|blood moon","What is a lunar eclipse?","A lunar eclipse happens when Earth's shadow falls on the Moon. The Moon can turn red because sunlight bends through Earth's air, so it is sometimes called a blood moon."],
+["sun die|sun burn out|sun end","Will the Sun burn out?","Yes, but not for about 5 billion years. It will swell into a red giant and then shrink into a small white dwarf."],
+["touched sun|spacecraft sun|parker solar probe|touch sun","Has a spacecraft touched the Sun?","NASA's Parker Solar Probe flew through the Sun's outer atmosphere, the corona, in 2021. It is the fastest object people have ever built."],
+["look at sun","Is it safe to look at the Sun?","No. Looking at the Sun can hurt your eyes, even for a short time. Use special solar viewers or a pinhole projector."],
+["closest star|nearest star|proxima","What is the closest star to Earth?","The Sun! The next closest is Proxima Centauri, about 4.2 light-years away. Its light takes over 4 years to reach us."],
+["how many stars|stars in sky|count stars","How many stars are there?","On a dark night you can see a few thousand stars. The Milky Way has 100 to 400 billion, and there are trillions of galaxies."],
+["star colors|star color|why stars different colors","Why are stars different colors?","A star's color shows its temperature. Red stars are cooler, yellow ones like the Sun are medium, and blue-white stars are the hottest."],
+["twinkle|why stars twinkle","Why do stars twinkle?","Starlight passes through moving air in Earth's atmosphere, which bends it back and forth. In space, stars do not twinkle."],
+["constellation|constellations|big dipper|orion belt","What is a constellation?","A constellation is a pattern of stars that people have named, like Orion the Hunter. There are 88 official constellations."],
+["north star|polaris","What is the North Star?","Polaris, the North Star, sits almost exactly above Earth's North Pole, so it barely moves in the sky. Travelers used it to find north."],
+["supernova","What is a supernova?","A supernova is the huge explosion of a big star at the end of its life. For a few weeks it can outshine a whole galaxy."],
+["neutron star|pulsar","What is a neutron star?","A neutron star is what is left after some supernovas. It is about the size of a city but heavier than the Sun. A teaspoon of it would weigh about a billion tons."],
+["white dwarf|red giant","What are red giants and white dwarfs?","When a star like the Sun runs low on fuel it puffs up into a red giant. Later it leaves behind a hot, Earth-sized core called a white dwarf."],
+["star made|how stars form|star born|nebula","How are stars born?","Stars form inside nebulas, giant clouds of gas and dust. Gravity squeezes clumps until their cores get hot enough to start nuclear fusion."],
+["big bang|universe begin|universe start","How did the universe begin?","Scientists think the universe began about 13.8 billion years ago in the Big Bang, when everything was tiny and incredibly hot, and it has been expanding ever since."],
+["universe age|how old universe","How old is the universe?","About 13.8 billion years old."],
+["universe end|edge universe|how big universe","How big is the universe?","Nobody knows if it has an edge. The part we can see is about 93 billion light-years across, and it keeps expanding."],
+["dark matter","What is dark matter?","Dark matter is invisible stuff we cannot see, but its gravity holds galaxies together. Scientists are still trying to find out what it is."],
+["dark energy","What is dark energy?","Dark energy is a mysterious something that makes the universe expand faster and faster. It makes up about 68% of the universe."],
+["exoplanet|other planets stars|planets other stars","Are there planets around other stars?","Yes! They are called exoplanets. Scientists have confirmed more than 5,000, and some may be the right temperature for liquid water."],
+["andromeda","What is the Andromeda Galaxy?","Andromeda is the nearest big galaxy to ours, about 2.5 million light-years away. You can see it as a faint smudge on a very dark night."],
+["galaxy types|spiral galaxy","What shapes do galaxies come in?","Galaxies can be spirals like the Milky Way, egg-shaped ellipticals, or messy irregular galaxies."],
+["aliens universe|aliens in space|life universe|aliens real|alien life universe|anyone out there|extraterrestrial","Are there aliens in the universe?","We have not found any life beyond Earth yet. With billions of planets out there, many scientists think life might exist somewhere, and missions keep looking."],
+["quasar","What is a quasar?","A quasar is the super-bright center of a faraway galaxy, powered by a giant black hole gobbling gas."],
+["wormhole","Are wormholes real?","Wormholes are shortcuts through space that appear in Einstein's math, but no one has ever found one."],
+["speed of light|how fast light","How fast is light?","Light travels about 300,000 km every second. It could go around Earth 7 times in one second."],
+["comet|comets|tail","What is a comet?","A comet is a ball of ice, dust and rock. When it gets near the Sun, the ice turns to gas and makes a glowing head and a long tail."],
+["halley","What is Halley's Comet?","Halley's Comet comes back about every 76 years. It was last seen in 1986 and will return in 2061."],
+["asteroid belt","What is the asteroid belt?","It is a ring of millions of rocky asteroids between Mars and Jupiter. They are spread far apart, so spacecraft fly through easily."],
+["ceres|dwarf planet|dwarf planets","What is a dwarf planet?","A dwarf planet is round and orbits the Sun but has not cleared its path of other objects. Pluto, Ceres, Eris, Haumea and Makemake are dwarf planets."],
+["kuiper belt|oort cloud","What is the Kuiper Belt?","The Kuiper Belt is a ring of icy objects beyond Neptune, where Pluto lives. Much farther out, the Oort Cloud is thought to hold trillions of comets."],
+["meteor shower|perseids|geminids|shooting stars","What is a meteor shower?","When Earth passes through dust left by a comet, many bits burn up in our air at once. The Perseids in August and Geminids in December are famous ones."],
+["dinosaur asteroid|dinosaurs","Did an asteroid wipe out the dinosaurs?","Yes. About 66 million years ago an asteroid about 10 km wide hit near Mexico and changed the climate, ending the age of dinosaurs."],
+["dart|asteroid defense|stop asteroid|planetary defense","Can we stop an asteroid from hitting Earth?","In 2022 NASA's DART spacecraft crashed into the asteroid Dimorphos and changed its orbit. It proved we can nudge an asteroid if we find it early."],
+["pieces asteroid|asteroid pieces|osiris rex|bennu|asteroid sample","Have we brought back pieces of an asteroid?","Yes. NASA's OSIRIS-REx collected rock and dust from asteroid Bennu and delivered it to Earth in 2023. Japan's Hayabusa missions did it too."],
+["asteroid hit earth|will asteroid hit","Will an asteroid hit Earth soon?","NASA tracks near-Earth asteroids every day. None of the known big ones is expected to hit Earth in the next 100 years."],
+["sputnik|first satellite","What was the first satellite?","Sputnik 1, launched by the Soviet Union in 1957. It was about the size of a beach ball and beeped radio signals."],
+["gagarin|first person space|first human space","Who was the first person in space?","Yuri Gagarin of the Soviet Union orbited Earth on April 12, 1961."],
+["first american space|alan shepard space|john glenn","Who was the first American in space?","Alan Shepard flew in 1961. In 1962 John Glenn became the first American to orbit Earth."],
+["first woman space|tereshkova|sally ride","Who was the first woman in space?","Valentina Tereshkova in 1963. Sally Ride became the first American woman in space in 1983."],
+["mae jemison","Who was Mae Jemison?","Mae Jemison is a doctor and engineer who in 1992 became the first African American woman to travel to space, on the Space Shuttle Endeavour."],
+["animals space|dog space|laika|monkeys space","Have animals gone to space?","Yes. Fruit flies went first in 1947. Later dogs, monkeys, mice, spiders and even tardigrades flew, helping scientists learn if space was safe."],
+["space shuttle","What was the Space Shuttle?","The Space Shuttle was NASA's reusable spaceplane. It flew 135 missions from 1981 to 2011 and helped build the International Space Station."],
+["voyager","Where are the Voyager spacecraft?","Voyager 1 and 2 launched in 1977. They are now in interstellar space, over 20 billion km away, the farthest human-made objects."],
+["golden record","What is the Golden Record?","Both Voyager spacecraft carry a golden record with sounds and pictures of Earth, like music, greetings and nature, in case anyone ever finds it."],
+["new horizons","What did New Horizons find at Pluto?","In 2015 New Horizons flew past Pluto and found a giant heart-shaped plain of nitrogen ice, mountains of water ice and a blue hazy sky."],
+["cassini","What was the Cassini mission?","Cassini orbited Saturn from 2004 to 2017. It studied the rings, found the geysers on Enceladus and dropped the Huygens probe onto Titan."],
+["juno","What is the Juno mission?","Juno has been orbiting Jupiter since 2016, studying its clouds, storms, magnetic field and moons."],
+["hubble","What is the Hubble Space Telescope?","Hubble has orbited Earth since 1990. Above the blurry air it takes sharp pictures, and it helped measure the age of the universe."],
+["james webb|jwst|webb telescope","What is the James Webb Space Telescope?","Webb launched in 2021. Its huge gold mirror sees infrared light, so it can spot the first galaxies and study air on exoplanets."],
+["telescope how|how telescope work","How does a telescope work?","A telescope uses lenses or mirrors to collect more light than your eye can, so faint and faraway things look brighter and bigger."],
+["satellite|satellites","What do satellites do?","Satellites orbit Earth to help with weather forecasts, GPS maps, TV, phone calls and studying our planet. Thousands are up there now."],
+["gps","How does GPS work?","Your phone listens to signals from several GPS satellites. By timing how long each signal takes, it works out where you are."],
+["space race","What was the Space Race?","From 1957 to 1975 the United States and the Soviet Union competed to explore space first, from the first satellite to landing on the Moon."],
+["nasa|what is nasa|nasa stand","What is NASA?","NASA stands for National Aeronautics and Space Administration. It is the United States space agency, started in 1958."],
+["other countries|countries space|countries explore|space agencies|esa|jaxa|isro","Which other countries explore space?","Many! Europe (ESA), Japan (JAXA), India (ISRO), China (CNSA), Canada (CSA), the UAE and others all launch missions."],
+["commercial space|spacex|private rocket","Do companies fly to space too?","Yes. Companies now build rockets and capsules that carry cargo and astronauts to the International Space Station for NASA."],
+["dsn|deep space network|talk to spacecraft","How does NASA talk to faraway spacecraft?","NASA uses the Deep Space Network: giant radio dishes in California, Spain and Australia, so one can always see a spacecraft as Earth turns."],
+["space junk|space debris","What is space junk?","Space junk is old satellites, rocket parts and tiny pieces of debris orbiting Earth. It moves very fast, so engineers track it to avoid crashes."],
+["float|weightless|why astronauts float|zero gravity|microgravity","Why do astronauts float?","Astronauts on the space station are falling around Earth all the time, at the same speed as their station. That constant falling makes them feel weightless."],
+["toilet|bathroom|go to bathroom space","How do astronauts use the toilet?","Space toilets use air flow like a gentle vacuum to pull waste away, since gravity cannot do it. Urine is recycled into clean water."],
+["astronauts clean|astronauts wash|astronauts shower|shower|wash|brush teeth","How do astronauts get clean?","There is no shower on the space station. Astronauts use wet towels, no-rinse shampoo, and they swallow or spit toothpaste into a towel."],
+["exercise|work out|treadmill","Why do astronauts exercise so much?","Without gravity, muscles and bones get weaker. Astronauts exercise about 2 hours a day on a treadmill, bike and weight machine."],
+["taller space|grow taller","Do astronauts grow taller in space?","Yes, by up to about 5 cm, because their spines stretch out without gravity. They shrink back on Earth."],
+["space sick|space sickness","Do astronauts get space sick?","Some do for the first few days, because their inner ear gets confused without gravity. It usually goes away."],
+["cry space|tears","Can you cry in space?","Yes, but tears do not fall. They stick to your eyes in a watery ball."],
+["what astronauts eat|space food|astronaut food|eat in space","What do astronauts eat?","Lots of normal food in packets: tortillas instead of bread so there are no crumbs, dried fruit, soups and even fresh fruit when supplies arrive."],
+["hot space|cold space|temperature space","Is space hot or cold?","Both! In sunlight objects can get above 120 C, and in shadow they can drop below -150 C. Spacesuits and spacecraft protect against both."],
+["sound space|noise space|hear in space","Is there sound in space?","No. Sound needs air or something else to travel through, and space is almost empty. Astronauts talk to each other by radio."],
+["space smell|smell space","What does space smell like?","Astronauts say their suits smell like seared steak, hot metal or welding fumes after a spacewalk."],
+["longest space|record space|most days space","What is the longest time anyone has spent in space?","Valeri Polyakov spent about 438 days in a row on the Mir space station in 1994 and 1995."],
+["how many people space|people been to space","How many people have been to space?","More than 600 people have flown to space."],
+["astronaut training|train astronaut","How do astronauts train?","They train for years: learning spacecraft systems, practicing spacewalks in a giant pool, flying jets, learning languages and doing survival training."],
+["helmet off|no spacesuit|without spacesuit","What would happen without a spacesuit?","Without air pressure and oxygen, a person would pass out in about 15 seconds. That is why spacesuits and habitats are sealed so carefully."],
+["spacesuit weight|how heavy spacesuit","How heavy is a spacesuit?","A spacewalk suit weighs about 130 kg on Earth. In orbit it feels weightless, but its mass still makes moving tiring."],
+["communicate astronauts|talk astronauts|ham radio","Can kids talk to astronauts?","Yes! Through the ARISS program, students use ham radio to talk with astronauts on the International Space Station."],
+["fast space station|space station speed|how fast station|iss speed|how fast iss|orbit earth","How fast does the space station go?","About 28,000 km per hour. It circles Earth every 90 minutes, so astronauts see 16 sunrises a day."],
+["see space station|see the space station|see iss|see iss|spot station","Can I see the space station from Earth?","Yes! It looks like a bright moving star with no blinking lights. NASA's Spot the Station website tells you when it passes over you."],
+["orbit|what is orbit","What is an orbit?","An orbit is a curved path around a planet or star. A spacecraft in orbit moves sideways so fast that as it falls, the ground curves away beneath it."],
+["gravity|what is gravity","What is gravity?","Gravity is the pull between things with mass. It keeps your feet on Earth, the Moon around Earth and Earth around the Sun."],
+["escape velocity","How fast must a rocket go to leave Earth?","To escape Earth's gravity a spacecraft needs about 11.2 km per second, over 40,000 km per hour."],
+["rocket fuel|fuel","What fuel do rockets use?","Many use liquid hydrogen or kerosene, burned with liquid oxygen. Rockets carry their own oxygen because there is none in space."],
+["reentry|heat shield|come back earth","Why do spacecraft get hot coming home?","They hit the air at very high speed, which squeezes and heats the air to thousands of degrees. A heat shield protects the crew."],
+["parachute|how land mars|seven minutes terror","How do rovers land on Mars?","Landing takes about 7 minutes: a heat shield, a giant parachute, then rockets. Curiosity and Perseverance were lowered by a sky crane on cables."],
+["space elevator","What is a space elevator?","It is an idea for a super-strong cable from Earth to space that elevators could climb. We do not have strong enough materials yet."],
+["light sail|solar sail","What is a solar sail?","A solar sail is a huge thin mirror that is pushed by sunlight, slowly speeding up a spacecraft without fuel."],
+["how move|how walk|move astronaut|controls|arrow keys","How do I move my astronaut?","Click or tap any tile to walk there, one tile at a time. You can also use the arrow keys or WASD on a keyboard."],
+["how build|build module|place module|build menu","How do I build a module?","Open the build menu, choose a module and a material, then click a gold tile. Gold tiles are within 3 of the rocket or next to another module. Some modules are required to win: check the list in the build panel."],
+["habitat","What does the habitat do?","The habitat recycles air and water: +15 oxygen and +15 water every sol, plus +6 radiation shield. It is usually the first thing to build."],
+["greenhouse","What does the greenhouse do?","A greenhouse gives +6 oxygen and +6 food a sol, and lets you grow plants in Martian or lunar soil using 1 dirt sample for 30 points."],
+["ice drill|drill","What does the ice drill do?","Build an ice drill, then walk to an ice patch and drill for water: +60 water and 30 points."],
+["med bay|health check","What does the med bay do?","Do a health check there once a sol for 25 points. It also gives +3 radiation shield."],
+["water recycler|recycle water module|recycler","What does the water recycler do?","It gives +12 water a sol by cleaning used water, and halves the water lost on a night with no power. On the ISS, the Water Recovery System recycles about 98% of the crew's water."],
+["oxygen generator|make oxygen module","What does the oxygen generator do?","It gives +14 oxygen a sol but uses 3 water, because it splits water into oxygen and hydrogen, just like the ISS Oxygen Generation System."],
+["food pantry|pantry|packed meals","What does the food pantry do?","It gives +8 food a sol from packed meals, like the food cargo ships bring to the ISS."],
+["battery bank|battery|batteries","What does the battery bank do?","It stores 20 extra power for the night, so your heaters stay on even if power hits 0. The ISS uses lithium-ion batteries the same way."],
+["pressurized rover|rover module|drive","What does the pressurized rover do?","With a rover, every step outside the safe zone costs half as much radiation shield, because you ride inside a shielded cabin."],
+["supply drop|more crates|cargo","Can I get more crates?","Yes! On the morning of sol 4 a cargo lander drops 4 more crates, like the Dragon and Cygnus cargo ships that resupply the ISS."],
+["fuel cell","What does the fuel cell do?","It gives +10 power and +4 water every sol, even in storms. Apollo and Space Shuttle fuel cells made electricity from hydrogen and oxygen, and the crew drank the water."],
+["co2 scrubber|scrubber|carbon dioxide","What does the CO2 scrubber do?","It gives +10 oxygen a sol by removing the carbon dioxide you breathe out, like the ISS Carbon Dioxide Removal Assembly."],
+["algae|bioreactor","What does the algae bioreactor do?","It gives +6 oxygen and +6 food a sol. Algae grow fast, turn carbon dioxide into oxygen, and can be eaten."],
+["suitport|suit port","What does the suitport do?","Walking uses half the power, because you climb into your suit straight from inside. NASA tested suitports on its Space Exploration Vehicle rover."],
+["walking power|walking cost|hygiene|fuel","Why does walking use power?","Your spacesuit runs on batteries, so walking uses 1 power every 2 steps (every 4 with a suitport). Washing with hot water also uses 4 power every night."],
+["water tank","What does the water tank do?","A water tank gives +12 water a sol. If it touches the rocket or habitat, it also gives +7 shield, because water blocks radiation well."],
+["regolith wall|wall","What does a regolith wall do?","A wall that touches the rocket or habitat adds +5 shield. On the Moon, each wall also blocks 4 damage from micrometeorites and meteor showers."],
+["solar vs nuclear|reactor or solar|which power","Should I build solar panels or a reactor?","Solar panels are cheaper and make 18 power (20 on the Moon), but dust storms cut them. A fission reactor costs more but always makes 20, even in storms."],
+["rebuild|edit module|change material|edit outpost","Can I change a module's material?","Yes. In the build menu use Edit, pick a new material and click the module. It costs half its crates plus power."],
+["call earth|hints|hint|stuck|what should i do|what do i do next|help me","What does Call Earth do?","Press Call Earth to get tips for your outpost right now: what is urgent tonight, what to build and where to explore. You get 3 calls each sol, unlimited in Free play."],
+["pause","Can I pause the game?","Yes. Press Pause next to the timer. The game also pauses while Mission Control or Call Earth is open."],
+["save|continue|load game","Does the game save?","Yes, it saves in your browser automatically. Use Continue outpost on the home screen to pick up where you left off."],
+["in the rocket|do in rocket|inside rocket|rocket lab|lab","What can I do in the rocket?","The rocket is your lab. Study pictures, work on dirt samples, analyze meteorites and grow food there."],
+["data packet|data packets","What are data packets?","You make a data packet each time you study something in the lab or write a log. Send them all to Earth at the comms dish for 30 points."],
+["survival points|survival","What are survival points?","In Junior astronaut mode you get 5 points for each sol you survive."],
+["why lose|lost|game over|mission failed","Why did my mission fail?","The mission fails if life support or the radiation shield reaches 0. Life support crashes fast once water, oxygen or food runs out. Build a habitat, keep power for the night, and sleep in the safe zone during radiation storms."],
+["storms game|what storms|storm types|which storms","What storms are in the game?","Mars: dust storms, dust devil swarms, great dust storms, deep cold nights and solar particle events. Moon: solar flares, coronal mass ejections, micrometeorites, meteor showers and moonquakes."],
+["dust devil swarm","What does a dust devil swarm do?","In the game, dust devils coat your panels so solar makes 70% power that day, and grit clogs the air filters for -6 oxygen that night."],
+["great dust storm|global dust storm|planet wide storm","What does a great dust storm do?","In the game it blocks the Sun: solar makes only 20% power, and the cold night drains 6 extra power. A fission reactor still works."],
+["meteor shower do|meteor shower in the game|meteor shower game|meteor shower moon","What does a meteor shower do in the game?","Bigger space rocks hit the outpost: up to -48 oxygen. Each regolith wall blocks 12, and Kevlar modules get hurt more."],
+["coronal mass ejection do|cme do|cme game|coronal mass ejection game","What does a coronal mass ejection do in the game?","It is a smaller radiation storm plus a power glitch of -6. Sleep in the safe zone and keep your shield up."],
+["night reserve|reserve|why cant spend power","Why can't I spend all my power?","The game keeps a reserve so your outpost survives the night. If a task would use power you need tonight, it is blocked."],
+["moon or mars|which is harder|mars vs moon","Is the Moon or Mars harder?","Each is hard in its own way. The Moon has no air, so radiation storms and space rocks hit harder. Mars has dust storms that cut solar power."],
+["best strategy|tips|strategy","What is a good strategy?","Build a habitat and solar panel near the rocket first, explore close spots, study finds in the lab, send data home, and always be in the safe zone when night comes."],
+["explore|dark tiles|fog","How do I find things to explore?","Walk into the dark tiles. Your astronaut reveals the map around them, showing rocks, meteorites, ice, outcrops and more."],
+["activities|long jump|rover test","What are the activities?","On an empty tile you can try a low-gravity long jump, hit a golf ball or test-drive the rover, once each, for 30 points."],
+["who made|who made this game|space apps","Who made this game?","Outpost 7 was designed by Jessie for the NASA Space Apps Challenge, the Junior Astronaut Mission Trainer."],
+["kp index|kp|geomagnetic storm|geomagnetic","What is the Kp index?","Kp measures how stirred up Earth's magnetic field is, from 0 (calm) to 9 (extreme). Kp 5 or more means a geomagnetic storm. On November 7, 2026 it reached Kp 5, a G1 storm, which can make auroras."],
+["real space weather|space weather game|noaa|real sun","Does the game use real space weather?","Yes. Each sol replays a real day from November 2 to November 8, 2026, using NOAA data: that day's solar flares and Earth's geomagnetic storms. That week the Sun was active, with 102 flares and the biggest an M3.5."],
+["all ways points|ways to earn|more science|new tasks|list tasks","What are all the ways to earn science points?","There are 56! At the rocket: study, analyze, grow food, stargaze, photograph moons or Earth. At modules: health checks, logs, plant growth, exercise, radio a school, read your radiation badge. Outside: samples, pictures, radar, rock layers, craters, sand, seismometers and more. The full list is in How to play."],
+["lava tube shelter|sleep in lava tube|lava tube game","What does the lava tube do in the game?","A lava tube is a natural shelter. It counts as a safe zone, and sleeping there adds 8 to your shelter shield. Exploring it is a Challenge task worth 30 points."],
+["required modules|mandatory|must build|need to build","Which modules do I have to build?","Cadet needs a habitat and power. Junior adds a comms dish, Commander adds a greenhouse, and Veteran adds a med bay. The build panel shows a checklist."],
+];
+const STOP=new Set('a an the is are was were be do does did can could how what why who when where which on in of to for and or it its my i you your we our there their this that with from at by about long much many'.split(' '));
+const stem=w=>{w=w.replace(/[^a-z0-9]/g,'');if(w.length<=3||/ss$/.test(w))return w;return w.replace(/ies$/,'y').replace(/s$/,'')};
+const COMMON=new Set(['mars','moon','earth','space','astronaut','sun','planet','rocket','star','game']);
+const words=t=>t.toLowerCase().split(/[\s-]+/).map(stem).filter(w=>w&&!STOP.has(w));
+// Score = best single keyword match + bonus for words shared with the question title (so broad words cannot pile up).
+function askKB(q){
+  const ql=' '+q.toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ')+' ',qw=new Set(words(q));
+  const scored=KB.map((e,i)=>{let best=0;
+    e[0].split('|').forEach(k=>{const kw=words(k);if(!kw.length)return;let sc;
+      if(ql.includes(' '+k+' '))sc=3*kw.length+1;else{const hit=kw.filter(w=>qw.has(w)).length;sc=hit===kw.length?kw.reduce((a,w)=>a+(COMMON.has(w)?1:2),0):hit*0.5}
+      if(sc>best)best=sc});
+    const tw=words(e[1]),th=tw.filter(w=>qw.has(w)).length;
+    return{i,sc:best+0.75*th+(th&&th===tw.length?0.5:0)}}).sort((a,b)=>b.sc-a.sc);
+  return scored;
+}
+function liveAnswer(q){const l=q.toLowerCase();
+  if(/(today|latest|recent|this month|now)/.test(l)&&/flare/.test(l)){const F=NASA.data.flares;
+    if(F)return F.length?`Real NASA DONKI data: ${F.length} solar flares in the last 30 days. Biggest: ${esc(F.slice().sort((a,b)=>flareRank(b.cls)-flareRank(a.cls))[0].cls)}.`:'Real NASA DONKI data: no solar flares were recorded in the last 30 days.';
+    return 'I cannot reach NASA right now, so I do not have today\'s flare data. Solar flares are graded A, B, C, M and X, and X is the strongest.'}
+  if(/(today|now|close|closest)/.test(l)&&/asteroid/.test(l)){const n=NASA.neo,c=n.closest;
+    return n.count!=null?`Real NASA data: ${n.count} asteroids pass near Earth today. The closest is ${esc(c.name)} at ${c.km.toLocaleString()} km.`:`I cannot reach NASA right now. Here is a real one: asteroid ${esc(c.name)} will pass about ${c.km.toLocaleString()} km from Earth on ${c.date}.`}
+  return null}
+const SUGGEST=['Why do astronauts float?','What is a comet?','Why is Venus the hottest planet?','What storms are in the game?','How long is a day on Mars?','Is there water on the Moon?','What blocks space radiation best?','What is a solar flare?','Is there life on Mars?','How do astronauts get oxygen?','What is the safe zone?','Which building material should I use?'];
+let askWasPaused=false;
+const CALLS_PER_SOL=3;
+function inGame(){return !!(S&&!S.over&&!$('#game').hidden)}
+// ---------- Call Earth hints ----------
+const POIN={basalt:'lava rock field',craterRim:'crater rim',gullies:'gullies',frost:'frost patch',spherules:'blueberry field',rille:'lava rille',highland:'highland rocks',swirl:'lunar swirl',rocks:'rock field',meteor:'meteorite',ice:'ice patch',outcrop:'rocky outcrop',river:'old riverbed',lavatube:'lava tube cave',clay:'clay deposit',dunes:'sand dunes',shadow:'shadowed crater',glass:'glass beads',boulder:'boulder track'};
+function dirTo(x,y){const dx=x-S.ax,dy=y-S.ay,ns=dy<0?'north':dy>0?'south':'',ew=dx>0?'east':dx<0?'west':'';
+  const n=cheb(S.ax,S.ay,x,y);return `${n} tile${n>1?'s':''} ${ns&&ew?ns+'-'+ew:ns||ew}`}
+function earthHints(){
+  const H=[],p=nightPlan(),ev=S.events[S.sol],safe=isSafe(S.ax,S.ay),t=S.timeLeft,inv=S.inv,td=S.today,has=m=>count(m)>0;
+  const add=(pr,txt)=>H.push([pr,txt]);
+  if(!safe&&t<=45)add(10,`Night comes in ${Math.ceil(t)} seconds and you are outside the safe zone. Walk back next to the rocket or a module now.`);
+  if(ev==='spe'||ev==='flare'||ev==='cme')add(9,`Radiation storm tonight (${evText(S.sol)[0]}). Your shelter shield is ${p.sh}. Sleep in the safe zone, and build walls or water tanks touching the rocket or habitat for more shield.`);
+  if(p.dark||S.power+p.dP<15)add(9,`Power will run ${p.dark?'out':'very low'} tonight (${S.power} now, ${sg(p.dP)} overnight). ${['dust','devil','gds'].includes(ev)?'In a dust storm a fission reactor still works.':'Build a solar panel and skip power-hungry tasks.'}`);
+  else if(['dust','devil','gds'].includes(ev))add(5,`${evText(S.sol)[0]} today: solar panels make only ${{dust:30,devil:70,gds:20}[ev]}% power, so spend power carefully.`);
+  {const eat=S.food<60,drink=S.water<60,air=S.oxygen<50;
+   if(drink)add(S.water<30?10:7,`Time to drink! Water is at ${S.water}${S.water<30?', which is dangerously low':''}. Each sol you need about 4 L (16 water). ${count('recycler')?'':'A water recycler gives +12 a sol. '}${count('drill')?'Drill an ice patch for +60.':'An ice drill lets you drill ice for +60.'}`);
+   if(eat)add(S.food<30?10:7,`Time to eat! Food is at ${S.food}${S.food<30?', which is dangerously low':''}. Each sol you need about 1.8 kg (12 food). ${S.today.growRocket?'':'Grow food at the rocket now (+18). '}${count('pantry')?'':'A food pantry gives +8 a sol.'}`);
+   if(air)add(S.oxygen<30?10:7,`Oxygen is getting low (${S.oxygen}). Build a CO2 scrubber or oxygen generator, or make oxygen at the rocket.`);}
+  {const fixes={water:'drill ice, probe a shadowed crater, or build a water recycler, habitat or water tank',oxygen:'build an oxygen generator, CO2 scrubber, algae bioreactor, habitat or greenhouse, or make oxygen at the rocket',food:'build a food pantry or algae bioreactor, grow food in the rocket, or grow plants in a greenhouse'};
+   const low=[['water',p.nW],['oxygen',p.nO],['food',p.nF]].filter(([k,v])=>v<30);
+   if(low.length)add(low.some(([k,v])=>v<=0)?10:8,`Tonight ${low.map(([k,v])=>`${k} drops to ${Math.max(0,v)}`).join(', ')}. If any of water, oxygen or food runs out, everything else drains fast until life support hits 0. To fix: ${low.map(([k])=>fixes[k]).join('; ')}.`)}
+  if(S.rad+p.dR<40)add(8,`Radiation shield will be ${Math.max(0,S.rad+p.dR)} by morning. Sleep in the safe zone${has('med')?' and do a health check at the med bay':''}.`);
+  if(ev==='micro'||ev==='shower')add(6,'Space rocks tonight. Each regolith wall blocks some of the damage, and Kevlar modules get hurt.');
+  {const miss=reqMissing();if(miss.length)add(S.sol>=5?9:6,`Required to win: you still need ${miss.map(k=>REQN[k]).join(', ')}.`)}
+  if(!has('hab'))add(7,'Build a habitat next to the rocket. It gives +15 oxygen and +15 water every sol and +6 shield.');
+  if(!has('solar')&&!has('nuclear'))add(7,'You have nothing that makes power yet. A solar panel gives +18 power every sol.');
+  const here=actionsHere().filter(a=>a.ok).sort((a,b)=>b.pts-a.pts);
+  if(here.length)add(6,`Right where you stand you can: ${here.slice(0,2).map(a=>`${a.label} (+${a.pts})`).join(', ')}.`);
+  const carry=[inv.pictures&&`${inv.pictures} picture${inv.pictures>1?'s':''}`,inv.samples&&`${inv.samples} dirt sample${inv.samples>1?'s':''}`,inv.meteors&&`${inv.meteors} meteorite${inv.meteors>1?'s':''}`].filter(Boolean);
+  if(carry.length&&T(S.ax,S.ay).t!=='rocket')add(6,`You are carrying ${carry.join(' and ')}. Take them to the rocket lab to earn more points.`);
+  if(inv.data&&!has('comms'))add(5,`You have ${inv.data} data packet${inv.data>1?'s':''}. Build a comms dish and send them to Earth for 30 points.`);
+  if(inv.data&&has('comms')&&!td.send&&T(S.ax,S.ay).mod!=='comms')add(6,'Walk to your comms dish and send your data home for 30 points.');
+  if(has('weather')&&!td.weather&&T(S.ax,S.ay).mod!=='weather')add(5,'Write today\'s weather and radiation log at your weather station (+25).');
+  if(has('med')&&!td.health&&T(S.ax,S.ay).mod!=='med')add(5,'Do today\'s health check at the med bay (+25).');
+  if(realDay(S.sol).kp)add(4,`Real space weather: Earth has a geomagnetic storm today (Kp ${realDay(S.sol).kp}), so sending data to Earth takes 50% longer.`);
+  if(!has('weather'))add(3,'A weather station shows tomorrow\'s forecast and earns 25 points every sol.');
+  const ice=S.tiles.findIndex(c=>c.seen&&c.t==='ice'&&!c.done);
+  if(ice>=0&&!has('drill'))add(5,'You found ice! Build an ice drill, then drill it for +60 water and 30 points.');
+  let best=null;S.tiles.forEach((c,i)=>{if(!c.seen||!POIN[c.t])return;const pending=c.t==='rocks'?!c.sampled||!c.photo:!c.done||!c.photo;if(!pending)return;
+    const x=i%W,y=(i/W)|0,d=cheb(S.ax,S.ay,x,y);if(d&&(!best||d<best.d))best={x,y,d,t:c.t}});
+  if(best)add(5,`Nearest place to explore: the ${POIN[best.t]}, ${dirTo(best.x,best.y)}.`);
+  else add(4,'Walk into the dark tiles to discover rocks, ice, meteorites and more.');
+  if(S.target&&S.total<S.target){const need=S.target-S.total,left=Math.max(1,8-S.sol);add(4,`You need ${need} more science points with ${left} sol${left>1?'s':''} left, about ${Math.ceil(need/left)} each sol.`)}
+  if(S.crates<=2)add(3,`Only ${S.crates} crate${S.crates===1?'':'s'} left. Spend them on modules that keep you alive or earn points every sol.`);
+  return H.sort((a,b)=>b[0]-a[0]).map(h=>h[1]);
+}
+function callsLeft(){if(MODE().noLose)return Infinity;S.calls=S.calls||{};return CALLS_PER_SOL-(S.calls[S.sol]||0)}
+async function callEarth(){if(!inGame())return;
+  openAsk();
+  if(S.waiting){askSay('mc','Start the sol first, then call Earth for hints.');return}
+  if(callsLeft()<=0){askSay('mc',`The Earth link is busy. You used all ${CALLS_PER_SOL} calls for sol ${S.sol}. New calls open at sunrise. You can still ask me space questions!`);return}
+  if(!MODE().noLose){S.calls[S.sol]=(S.calls[S.sol]||0)+1;save()}
+  const left=callsLeft(),leftTxt=left===Infinity?'Unlimited calls in Free play.':`${left} call${left===1?'':'s'} left today.`;
+  askSay('me','📞 Calling Earth for hints…');
+  const hints=earthHints().slice(0,4),plain=`<b>Earth here! Our top tips:</b><ol>${hints.map(h=>`<li>${esc(h)}</li>`).join('')}</ol><small>${leftTxt}</small>`;
+  askSay('mc',plain);
+}
+function openAsk(){if($('#askBox').hidden){if(S&&!$('#game').hidden){askWasPaused=paused;paused=true;renderClock&&S&&renderClock()}$('#askBox').hidden=false}
+  $('#askCall').hidden=!inGame();
+  if(!$('#askLog').children.length)askSay('mc','Hi, this is Mission Control! Ask me anything about space, Mars, the Moon or this game.');
+  renderSuggest();setTimeout(()=>$('#askInput').focus(),0)}
+function closeAsk(){$('#askBox').hidden=true;if(S&&!$('#game').hidden){paused=askWasPaused;renderClock()}}
+function askSay(who,html){const li=document.createElement('li');li.className=who;li.innerHTML=html;$('#askLog').appendChild(li);$('#askLog').scrollTop=1e9;return li}
+function renderSuggest(pick){const L=pick||SUGGEST.slice().sort(()=>Math.random()-.5).slice(0,4);
+  $('#askSuggest').innerHTML=L.map(q=>`<button class="chip askchip" type="button">${esc(q)}</button>`).join('');
+  document.querySelectorAll('.askchip').forEach(b=>b.onclick=()=>askQuestion(b.textContent))}
+function askQuestion(q){q=q.trim();if(!q)return;askSay('me',esc(q));$('#askInput').value='';
+  const live=liveAnswer(q);if(live){askSay('mc',live);return}
+  const r=askKB(q),best=r[0];
+  if(best.sc>=2){const e=KB[best.i];askSay('mc',`<b>${esc(e[1])}</b><br>${esc(e[2])}`);
+    renderSuggest(r.slice(1,4).filter(x=>x.sc>=1.5).map(x=>KB[x.i][1]).concat(SUGGEST).slice(0,4))}
+  else askSay('mc',`Great question! I don't have that one in my files yet. Try asking about planets, stars, the Moon, Mars, rockets, astronauts or this game. Or explore <a href="https://spaceplace.nasa.gov/" target="_blank" rel="noopener">NASA Space Place</a>.`);
+}
+
+let S=null, pickBody='mars', pickDiff='junior', buildSel=null;
+
+// ---------- utils ----------
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const idx=(x,y)=>y*W+x, T=(x,y)=>S.tiles[idx(x,y)];
+const cheb=(x1,y1,x2,y2)=>Math.max(Math.abs(x1-x2),Math.abs(y1-y2));
+const clamp=v=>Math.max(0,Math.min(100,Math.round(v)));
+const PMAX=150,clampP=v=>Math.max(0,Math.min(PMAX,Math.round(v))); // power tank holds 150
+const B=()=>BODY[S.body];
+const mult=()=>MODE().mult;
+function save(){try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}}
+function load(){try{const j=localStorage.getItem(SAVE);return j?JSON.parse(j):null}catch(e){return null}}
+function clearSave(){try{localStorage.removeItem(SAVE)}catch(e){}}
+
+// ---------- new game ----------
+function newGame(body,diff){
+  const r=rng((Math.random()*1e9)|0);
+  const tiles=[];
+  for(let i=0;i<W*H;i++)tiles.push({t:'plain',s:r(),seen:false,mod:null,photo:false,sampled:false,done:false});
+  tiles[idx(RX,RY)].t='rocket';
+  const place=(t,n,minD)=>{let tries=0;while(n>0&&tries<2000){tries++;const x=(r()*W)|0,y=(r()*H)|0,c=tiles[idx(x,y)];
+    if(c.t!=='plain'||cheb(x,y,RX,RY)<minD)continue;
+    let near=false;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<W&&ny<H&&(tiles[idx(nx,ny)].t===t||tiles[idx(nx,ny)].t==='rocket'))near=true}
+    if(near)continue;c.t=t;n--}};
+  // terrain counts per map (12 x 9 = 108 tiles)
+  const TERR=body==='mars'
+    ?[['river',2,4],['ice',2,4],['lavatube',1,4],['clay',2,4],['gullies',2,4],['frost',1,4],['spherules',2,3],['dunes',3,3],['basalt',2,3],['craterRim',2,3],['meteor',3,3],['outcrop',3,3],['rocks',8,2]]
+    :[['ice',3,4],['lavatube',1,4],['shadow',2,5],['rille',1,4],['swirl',1,4],['glass',2,4],['highland',2,3],['boulder',3,3],['basalt',2,3],['craterRim',3,3],['meteor',3,3],['outcrop',3,3],['rocks',8,2]];
+  TERR.forEach(([t,n,d])=>place(t,n,d));
+  const M=MODES[diff];
+  let pool=body==='mars'?['spe','dust','cold','devil','gds','clear']:['flare','micro','quake','cme','shower','flare'];
+  const order=body==='mars'?[4,2,3,1,0]:[4,5,2,1,3,0]; // which storms turn calm first in gentle modes (harshest first)
+  for(let i=0;i<M.calm;i++)pool[order[i]]='clear';
+  if(M.calm<0){if(body==='mars')pool[5]='spe';else pool[2]='flare'} // Veteran: an extra radiation storm
+  for(let i=pool.length-1;i>0;i--){const j=(r()*(i+1))|0;[pool[i],pool[j]]=[pool[j],pool[i]]}
+  S={v:1,body,diff,sol:1,solLen:M.sol,timeLeft:M.sol,waiting:true,crates:M.crates,cratesStart:M.crates,
+    power:M.power,life:100,water:100,oxygen:100,food:100,rad:100,tiles,ax:RX,ay:RY,inv:{samples:0,pictures:0,meteors:0,data:0},
+    today:{},acts:{},events:['clear','clear',...pool],sci:{},total:0,log:[],over:null,target:tgt(M,body)};
+  S.sunMult=WX.sunMult;S.flareFor={};const FL=NASA.flares;let fi=0;
+  S.events.forEach((e,sol)=>{if(e==='spe'||e==='flare'){S.flareFor[sol]=FL[fi%FL.length];fi++}});
+  reveal(RX,RY,2);
+  addLog(`Touchdown on ${B().name}. Build your outpost and start exploring.`,'good');
+  save();
+}
+function reveal(x,y,r){for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<W&&ny<H)T(nx,ny).seen=true}}
+function evText(sol){const e=B().events[S.events[sol]],rf=S.flareFor&&S.flareFor[sol];
+  return rf?[e[0]+` (class ${rf.cls})`,e[1]+` Modeled on a real ${rf.cls} solar flare from ${rf.date}, recorded by NASA DONKI.`]:e}
+// Life support = average of three stocks: water, oxygen, food (each 0-100). Any stock at 0 ends the mission.
+const LS=[['water','💧 Water'],['oxygen','🫁 Oxygen'],['food','🍎 Food']];
+// NASA daily use per astronaut (NASA Life Support Baseline Values): about 0.84 kg oxygen, 1.8 kg food, 3 L drinking water + about 1 L for washing.
+// Game scale: a full oxygen store (100) = 5.25 kg, water (100) = 25 L, food (100) = 15 kg. So one sol uses 16 oxygen, 16 water, 12 food.
+const PER={water:0.25,oxygen:0.0525,food:0.15},UNIT={water:'L',oxygen:'kg',food:'kg'};
+const amt=(k,pts)=>`${(Math.abs(pts)*PER[k]).toFixed(k==='water'?1:2).replace(/\.?0+$/,'')} ${UNIT[k]}`;
+const USE_TEXT='Each sol your astronaut uses about 0.84 kg of oxygen, 1.8 kg of food and 4 L of water (3 L to drink, 1 L to wash). These are NASA\'s life support numbers for one astronaut.';
+function syncLife(){if(S.water==null){S.water=S.oxygen=S.food=S.life??70}S.life=Math.round((S.water+S.oxygen+S.food)/3)}
+function addLS(w=0,o=0,f=0){S.water=clamp(S.water+w);S.oxygen=clamp(S.oxygen+o);S.food=clamp(S.food+f);syncLife()}
+const lsFx=(w,o,f)=>[w&&fx('water',w),o&&fx('oxygen',o),f&&fx('food',f)].filter(Boolean).join(', ');
+function addLog(msg,cls='',fact='',img=''){S.log.unshift({m:msg,c:cls,f:fact,sol:S.sol,img});S.log=S.log.slice(0,60)}
+
+// ---------- outpost rules ----------
+function count(m){return S.tiles.filter(t=>t.mod===m).length}
+function isSafe(x,y){if(T(x,y).t==='lavatube')return true;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<W&&ny<H){const c=T(nx,ny);if(c.t==='rocket'||c.mod)return true}}return false}
+function touchesShelter(x,y){for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<W&&ny<H){const c=T(nx,ny);if(c.t==='rocket'||c.mod==='hab')return true}}return false}
+function shield(){let s=count('hab')>0?6:0;
+  S.tiles.forEach((c,i)=>{if(!c.mod)return;const x=i%W,y=(i/W)|0,t=touchesShelter(x,y);
+    if((c.mod==='wall'||c.mod==='tank')&&t)s+=c.mod==='wall'?5:7;
+    const M=MATS[c.mat||'alu'];if(M.sh>0&&(t||c.mod==='hab'))s+=M.sh;if(M.sh<0)s+=M.sh});
+  return Math.max(0,s)}
+function nightPlan(){
+  const m=mult(),ev=S.events[S.sol],b=B();
+  const nonPower=S.tiles.filter(t=>t.mod&&!POWER_MODS.includes(t.mod)).length;
+  let gen=count('solar')*b.solar*({dust:0.3,devil:0.7,gds:0.2}[ev]??1)+count('nuclear')*20;
+  let dP=gen+count('fuelcell')*10-(6+2*nonPower)*m-4*m; // -4: hygiene (hot water for washing) if(ev==='cold')dP-=10*m; if(ev==='quake')dP-=8*m; if(ev==='gds'||ev==='cme')dP-=6*m;
+  // water and oxygen drain 16 a night, food 12 (stored food lasts longer); habitat recycles air and water, greenhouse makes air and food, tank stores water
+  let dW=-16*m+count('hab')*15+count('tank')*12+Math.min(1,count('recycler'))*12-count('ogs')*3+count('fuelcell')*4, dO=-16*m+count('hab')*15+count('green')*6+count('ogs')*14+count('scrubber')*10+count('algae')*6, dF=-12*m+count('green')*6+count('pantry')*8+count('algae')*6;
+  if(ev==='micro'||ev==='shower')dO-=3*(Math.max(2,(ev==='shower'?16:12)-4*count('wall'))+2*S.tiles.filter(t=>t.mod&&t.mat==='kevlar').length)*m; // hull leaks
+  if(ev==='devil')dO-=6*m; // grit clogs the air filters
+  const sh=shield()+(T(S.ax,S.ay).t==='lavatube'?8:0),safe=isSafe(S.ax,S.ay);
+  let dR=safe?4+sh/2:-b.nightOut*m;
+  if(ev==='spe'||ev==='flare'){const rf=S.flareFor&&S.flareFor[S.sol];let d=Math.max(3,Math.round(b.flare*(rf?flareMult(rf.cls):1)*(S.sunMult||1))-sh)*m;if(!safe)d*=2;dR-=d}
+  if(ev==='cme'){let d=Math.max(2,Math.round(b.flare*0.5*(S.sunMult||1))-sh)*m;if(!safe)d*=2;dR-=d}
+  const dark=S.power+dP<=-20*count('battery'); if(dark){dW-=(count('recycler')?15:30)*m;dO-=30*m} // no heat: water freezes, air recycler stops
+  // running out: if any store is empty tonight, the crew is in crisis and the other two drain fast
+  const empty=[['water',S.water+dW],['oxygen',S.oxygen+dO],['food',S.food+dF]].filter(([k,v])=>v<=0).map(([k])=>k);
+  if(empty.length){const x=30*m;if(!empty.includes('water'))dW-=x;if(!empty.includes('oxygen'))dO-=x;if(!empty.includes('food'))dF-=x}
+  dW=Math.round(dW);dO=Math.round(dO);dF=Math.round(dF);
+  const nW=clamp(S.water+dW),nO=clamp(S.oxygen+dO),nF=clamp(S.food+dF),dL=Math.round((nW+nO+nF)/3)-S.life;
+  return{dP:Math.round(dP),dL,dW,dO,dF,nW,nO,nF,empty,dR:Math.round(dR),sh,safe,dark};
+}
+
+// ---------- actions ----------
+function award(key,extra=''){const [name,pts]=SCI[key];S.sci[key]=(S.sci[key]||0)+pts;S.total+=pts;toast(`+${pts} science: ${name}`);return pts}
+function spend(h,power){busyFor(h);S.power=clampP(S.power-power)}
+let busyUntil=0,walkTarget=null,nextStep=0,paused=false,wasBusy=false;
+const now=()=>performance.now();
+function isBusy(){return now()<busyUntil}
+function busyFor(h){busyUntil=now()+h*HOUR_MS}
+const secs=h=>h*HOUR_MS/1000;
+function nightReserve(){const d=nightPlan().dP;return d<0?-d+1:1}
+const affordable=c=>S.power-c>=nightReserve();
+function actionsHere(){
+  const c=T(S.ax,S.ay),L=[],td=S.today,inv=S.inv,b=S.body;
+  const A=(label,_h,power0,key,ok,why,fn,note='')=>{const power=Math.max(power0,TIERS[tierOf(key)].pw);L.push({label,ap:TIERS[tierOf(key)].h*(key==='send'&&realDay(S.sol).kp?1.5:1),tier:tierOf(key),power,pts:key?SCI[key][1]:0,ok:ok&&affordable(power),why:!ok?why:S.power<power?'Not enough power':!affordable(power)?`Save power for tonight (keep ${nightReserve()})`:'',fn,note})};
+  if(c.t==='rocket'){
+    A('Study a picture',1,2,'picLab',inv.pictures>0,'Take a picture outside first',()=>{inv.pictures--;inv.data++;award('picLab');const ph=(S.album||[]).shift();addLog(ph?`Studied the picture "${esc(ph.title)}" in the rocket lab.`:'Studied a picture in the rocket lab.','sci')});
+    A('Work on a dirt sample',2,5,'dirtLab',inv.samples>0,'Collect a dirt sample first',()=>{inv.samples--;addLS(-2,0,0);inv.data++;award('dirtLab');addLog('Analyzed a dirt sample in the rocket lab. Washing the tools used 0.5 L: -2 water.','sci',FACTS.dirt)});
+    A('Analyze a meteorite',2,5,'meteorAnalyze',inv.meteors>0,'Find a meteorite first',()=>{inv.meteors--;inv.data++;award('meteorAnalyze');addLog('Analyzed a meteorite. It is made of iron and nickel.','sci')});
+    A('Grow food on the rocket',2,6,'growRocket',!td.growRocket,'Already grew food today',()=>{td.growRocket=1;addLS(-4,0,18);award('growRocket');addLog('Grew lettuce under LED lights. +18 food, -4 water (1 L for the plants).','sci',FACTS.grow)},'+18 food, -4 water');
+  }
+  if(c.mod==='green')A('Grow plants in local soil',2,6,'growSoil',inv.samples>0&&!td.growSoil,inv.samples>0?'Already planted today':'Needs 1 dirt sample',()=>{td.growSoil=1;inv.samples--;addLS(-4,0,24);award('growSoil');addLog(`Plants sprouted in ${b==='mars'?'Martian':'lunar'} soil! +24 food, -4 water.`,'sci')},'uses 1 sample, +24 food, -4 water');
+  if(c.mod==='comms')A('Send data back to Earth',2,12,'send',inv.data>0&&!td.send,inv.data>0?'Already sent today':'Study something in the lab first',()=>{td.send=1;addLog(`Sent ${inv.data} data packet(s) to Earth.`,'sci',FACTS.send);inv.data=0;award('send')},`${inv.data} packet(s) ready`);
+  if(c.mod==='weather')A('Write weather and radiation log',1,2,'weather',!td.weather,'Already logged today',()=>{td.weather=1;inv.data++;award('weather');const F=NASA.data.flares;addLog('Logged temperature, wind and radiation. Real Sun: '+esc(realDayText(S.sol)),'sci',F&&F.length?`Real NASA DONKI data: ${F.length} solar flares in the last 30 days. Biggest: ${esc(F.slice().sort((a,b)=>flareRank(b.cls)-flareRank(a.cls))[0].cls)}.`:F?'Real NASA DONKI data: no solar flares recorded in the last 30 days.':FACTS.weather)});
+  if(c.mod==='med')A('Health check',2,4,'health',!td.health,'Already checked today',()=>{td.health=1;inv.data++;S.rad=clamp(S.rad+3);award('health');addLog('Doctor compared your bones, heart and eyes with Earth normal. +3 radiation shield (medicine).','sci',FACTS.health)});
+  const poi=c.t;
+  if(['rocks','meteor','ice','outcrop','river','lavatube','clay','dunes','shadow','glass','boulder','basalt','craterRim','gullies','frost','spherules','rille','highland','swirl'].includes(poi)){
+    A('Take a picture',1,0,'pic',!c.photo,'Already photographed',()=>{c.photo=true;inv.pictures++;award('pic');const ph=pickPhoto();
+    if(ph){S.album=(S.album||[]).concat([ph]);addLog(`Snapped a picture. Real image: ${esc(ph.title)} (${esc(ph.date)}).`,'sci',ph.kind==='mars'?'Real photo from NASA\'s Mars rover images API.':'Real image from NASA\'s Astronomy Picture of the Day.',ph.url)}
+    else addLog('Snapped a picture.','sci',FACTS.pic)});
+  }
+  if(poi==='rocks')A('Collect dirt sample',2,0,'dirt',!c.sampled,'Already sampled here',()=>{c.sampled=true;inv.samples++;award('dirt');addLog('Scooped a dirt sample into a sealed bag.','sci')});
+  if(poi==='meteor')A('Find the meteorite',2,0,'meteorFind',!c.done,'Already collected',()=>{c.done=true;inv.meteors++;award('meteorFind');const n=NASA.neo,cl=n.closest;addLog('Found a meteorite! Take it to the rocket lab.','sci',n.count!=null?`Real NASA data: ${n.count} asteroids pass near Earth today. Closest: ${esc(cl.name)} at ${cl.km.toLocaleString()} km${n.hazardous?`, ${n.hazardous} marked potentially hazardous`:''}.`:`Real NASA data: asteroid ${esc(cl.name)} will pass about ${cl.km.toLocaleString()} km from Earth on ${cl.date}. ${FACTS.meteor}`)});
+  if(poi==='ice')A('Drill for water',3,8,'water',!c.done&&count('drill')>0,c.done?'Already drilled':'Build an ice drill first',()=>{c.done=true;addLS(60,0,0);award('water');addLog('Found water ice! +60 water.','sci',b==='moon'?FACTS.water:FACTS.marswater)},'+60 water');
+  if(poi==='outcrop')A('Space walk discovery',3,0,'spacewalk',!c.done,'Already explored',()=>{c.done=true;S.rad=clamp(S.rad-5*mult());award('spacewalk');addLog('Climbed the outcrop and found layered rock. -5 radiation shield.','sci')},'-5 radiation shield');
+  if(poi==='river')A('Search for signs of past life',3,0,'life',!c.done,'Already searched',()=>{c.done=true;award('life');addLog('Found rock patterns that tiny ancient microbes may have made!','sci',FACTS.life)});
+  if(c.t!=='rocket'&&!c.mod){
+    Object.entries(ACTIVITIES).forEach(([k,n])=>A(n,2,0,'activity',!S.acts[k],'Already done',()=>{S.acts[k]=1;award('activity');addLog(`${n}: ${k==='jump'?`you jumped about ${b==='moon'?6:2.6} times farther than on Earth!`:k==='golf'?'the ball flew out of sight.':'the rover handled the rocks well.'}`,'sci',k==='golf'?FACTS.golf:'')}));
+  }
+  // ---- more science (each teaches a real fact) ----
+  const mars=b==='mars',acts=S.acts,fx2=(k,msg,fact)=>{award(k);addLog(msg,'sci',fact)};
+
+
+  // ---- more terrain ----
+  if(poi==='basalt')A('Sample the lava rock',2,0,'basalt',!c.done,'Already sampled',()=>{c.done=true;inv.samples++;fx2('basalt',mars?'Chipped a piece of dark lava rock. +1 dirt sample.':'Chipped a piece of dark mare basalt. +1 dirt sample.',mars?'Olympus Mons on Mars is the biggest volcano in the solar system, about 22 km tall.':'The dark patches you can see on the Moon from Earth are maria: huge plains of cooled basalt lava.')},'+1 sample');
+  if(poi==='craterRim')A('Survey the crater rim',2,0,'craterRim',!c.done,'Already surveyed',()=>{c.done=true;inv.pictures++;fx2('craterRim','Walked the rim and photographed the crater. +1 picture.','Rock blasted out by an impact lands around the rim, so rim rocks come from deep underground.')},'+1 picture');
+  if(poi==='frost')A('Measure the carbon dioxide frost',2,0,'frost',!c.done,'Already measured',()=>{c.done=true;inv.data++;fx2('frost','Measured a thin layer of dry-ice frost. +1 data.','Each Martian winter, part of the carbon dioxide air freezes onto the poles as dry ice, then turns back to gas in spring.')},'+1 data');
+  if(poi==='gullies')A('Study the gullies',3,0,'gullies',!c.done,'Already studied',()=>{c.done=true;S.rad=clamp(S.rad-2*mult());fx2('gullies','Climbed the slope to map the gullies. -2 radiation shield.','Mars Reconnaissance Orbiter has watched new gullies form. Frozen carbon dioxide sliding downhill likely carves many of them.')},'-2 radiation shield');
+  if(poi==='spherules')A('Collect hematite "blueberries"',3,0,'spherules',!c.done,'Already collected',()=>{c.done=true;inv.samples++;fx2('spherules','Scooped up tiny gray balls of hematite. +1 dirt sample.','In 2004 the Opportunity rover found hematite balls nicknamed "blueberries". They likely formed in groundwater long ago.')},'+1 sample');
+  if(poi==='highland')A('Collect a bright highland rock',3,0,'highland',!c.done,'Already collected',()=>{c.done=true;inv.samples++;fx2('highland','Picked up a bright, white highland rock. +1 dirt sample.','Apollo 15 astronauts found the "Genesis Rock", a piece of the Moon\'s ancient bright crust about 4 billion years old.')},'+1 sample');
+  if(poi==='rille')A('Explore the lava rille',3,0,'rille',!c.done,'Already explored',()=>{c.done=true;S.rad=clamp(S.rad-3*mult());fx2('rille','Hiked along the winding lava channel. -3 radiation shield.','Apollo 15 astronauts drove their rover to the edge of Hadley Rille, a valley carved by flowing lava.')},'-3 radiation shield');
+  if(poi==='swirl')A('Map the lunar swirl',3,0,'swirl',!c.done,'Already mapped',()=>{c.done=true;inv.data++;fx2('swirl','Mapped the bright swirl pattern with a magnetometer. +1 data.','Lunar swirls like Reiner Gamma sit where small magnetic fields in the crust shield the ground from the solar wind.')},'+1 data');
+  // ---- special tiles ----
+  if(poi==='lavatube')A('Explore the lava tube cave',4,0,'caveExplore',!c.done,'Already explored',()=>{c.done=true;fx2('caveExplore','Explored the dark lava tube with your headlamp.','Orbiters have spotted pits on the Moon and Mars that open into lava tubes. Their thick rock roofs could shield future explorers from radiation.')},'tip: sleep here, it is a natural shelter (+8 shield)');
+  if(poi==='clay')A('Test the clay minerals',3,0,'clay',!c.done,'Already tested',()=>{c.done=true;inv.data++;fx2('clay','Found clay minerals. +1 data.','Clay minerals form when rock sits in water for a long time. Curiosity found lots of clay in Gale Crater, a clue that Mars was once wet.')},'+1 data');
+  if(poi==='dunes')A('Measure how fast the dunes move',2,0,'dunes',!c.done,'Already measured',()=>{c.done=true;fx2('dunes','Planted stakes to see how fast the dune creeps.','Mars Reconnaissance Orbiter photos show some Martian sand dunes and ripples slowly moving with the wind.')});
+  if(poi==='boulder')A('Study the rolling-boulder track',2,0,'boulder',!c.done,'Already studied',()=>{c.done=true;fx2('boulder','Followed the track to the boulder that made it.','Lunar Reconnaissance Orbiter photos show tracks where boulders rolled downhill, some likely shaken loose by moonquakes.')});
+  if(poi==='glass')A('Collect volcanic glass beads',3,0,'glass',!c.done,'Already collected',()=>{c.done=true;inv.samples++;fx2('glass','Scooped up tiny orange glass beads. +1 dirt sample.','Apollo 17 astronaut Harrison Schmitt found orange soil made of tiny glass beads from ancient volcanic fire fountains.')},'+1 sample');
+  if(poi==='shadow')A('Probe the permanently shadowed crater',4,0,'shadow',!c.done&&S.power>=20,c.done?'Already probed':'Needs 20 power for heaters',()=>{c.done=true;S.power=clampP(S.power-6);addLS(30,0,0);fx2('shadow','Lowered a probe into the frozen dark and found ice! -6 power, +30 water.','Some craters near the Moon\'s poles have not seen sunlight for billions of years and are colder than -230 C.')},'-6 power for heaters, +30 water');
+  // ---- hard tasks (25) ----
+  if(poi==='rocks')A('Drill a deep rock core',3,0,'coreDrill',!c.core&&count('drill')>0,c.core?'Already cored here':'Build an ice drill first',()=>{c.core=true;inv.samples++;fx2('coreDrill','Drilled a rock core and sealed it. +1 dirt sample.','Perseverance drills rock cores about the size of a piece of chalk and seals them in tubes.')},'needs an ice drill, +1 sample');
+  if(poi==='outcrop')A('Climb down a crater cliff',3,0,'cliff',!c.cliff,'Already climbed here',()=>{c.cliff=true;S.rad=clamp(S.rad-4*mult());fx2('cliff','Climbed down the cliff and found older rock at the bottom. -4 radiation shield.','Deeper rocks are older. Craters let scientists see layers that formed billions of years ago.')},'-4 radiation shield');
+  if(c.t==='rocket'){
+    A('Pack a sample tube for return to Earth',3,0,'packReturn',inv.samples>0&&!td.packReturn,inv.samples>0?'Already packed one today':'Needs 1 dirt sample',()=>{td.packReturn=1;inv.samples--;fx2('packReturn','Sealed a sample tube for a future return mission. Uses 1 sample.','Perseverance has sealed rock and soil tubes on Mars so a future mission could bring them to Earth.')},'uses 1 sample');
+    A(mars?'Make oxygen from Mars air':'Bake oxygen out of Moon dust',3,0,'oxygen',!acts.oxygen,'Already done this mission',()=>{acts.oxygen=1;addLS(0,12,0);fx2('oxygen',mars?'Split carbon dioxide into oxygen. +12 oxygen.':'Heated Moon dust to release oxygen. +12 oxygen.',mars?'NASA\'s MOXIE made oxygen from Mars air 16 times between 2021 and 2023.':'Moon dust is about 40% oxygen by weight, locked inside the minerals.')},'+12 oxygen');
+  }
+  if(c.mod==='comms')A('Relay data through an orbiter',3,0,'relay',inv.data>=2&&!acts.relay,acts.relay?'Already done this mission':'Needs 2 data packets',()=>{acts.relay=1;fx2('relay','Bounced your data through an orbiter overhead.',mars?'Most rover data reaches Earth through orbiters like Mars Reconnaissance Orbiter, not straight from the rover.':'NASA\'s Lunar Reconnaissance Orbiter has mapped the Moon in amazing detail since 2009.')},'needs 2 data');
+  if(c.mod==='weather')A(mars?'Launch a weather balloon':'Track the Sun with a solar telescope',3,0,mars?'balloon':'solarScope',mars?!acts.balloon:!acts.solarScope,'Already done this mission',()=>{const k=mars?'balloon':'solarScope';acts[k]=1;fx2(k,mars?'Launched a balloon to measure winds high up.':'Tracked sunspots that could cause flares.',mars?'Mars air is only about 1% as thick as Earth\'s, so a balloon there must be huge and very light.':'NASA\'s Solar Dynamics Observatory photographs the whole Sun every 12 seconds to watch for flares.')});
+  if(c.mod==='med'&&count('hab')>0)A('Run a heart and sleep study',3,0,'heartStudy',!acts.heartStudy,'Already done this mission',()=>{acts.heartStudy=1;fx2('heartStudy','Recorded your heartbeat and sleep for the doctors on Earth.','A NASA study found astronauts\' hearts become rounder during long missions in space.')},'needs a habitat');
+
+  if(c.t==='rocket'){
+    A('Stargaze through the telescope',1,0,'telescope',!td.telescope,'Already stargazed today',()=>{td.telescope=1;fx2('telescope','Looked through the rocket telescope.',mars?'From Mars, Earth looks like a bright blue evening or morning star.':'From the Moon, Earth looks about 4 times wider than the full Moon looks from Earth, and it has phases too.')});
+    A(mars?'Photograph Phobos and Deimos':'Photograph Earthrise',1,0,'skyPhoto',!acts.skyPhoto,'Already done this mission',()=>{acts.skyPhoto=1;fx2('skyPhoto',mars?'Photographed both moons of Mars.':'Photographed Earth over the horizon.',mars?'Phobos orbits Mars 3 times a day, so it rises in the west and sets in the east.':'Apollo 8 astronaut Bill Anders took the famous Earthrise photo in 1968.')});
+  }
+  if(c.mod==='hab')A('Exercise to protect bones and muscles',1,0,'exercise',!td.exercise,'Already exercised today',()=>{td.exercise=1;fx2('exercise','Did a workout on the treadmill and resistance machine.','In weightlessness, astronauts can lose about 1% of their bone mass a month, so ISS crews exercise about 2 hours a day.')});
+  if(c.mod==='comms')A('Radio a school on Earth',1,0,'outreach',!td.outreach,'Already talked to a school today',()=>{td.outreach=1;fx2('outreach','Answered questions from students on Earth.',mars?'Radio signals take 3 to 22 minutes to travel between Mars and Earth, so you record your answers ahead of time.':'Through the ARISS program, students use ham radio to talk with astronauts in space.')});
+  if(c.mod==='med')A('Read your radiation badge',1,0,'dosimeter',!td.dosimeter,'Already read today',()=>{td.dosimeter=1;fx2('dosimeter',`Read your dosimeter badge. Radiation shield is at ${S.rad}.`,'Curiosity\'s RAD instrument showed a round trip to Mars would expose an astronaut to about 0.66 sieverts, so shielding matters.')});
+  if(c.mod==='green')A('Measure plant growth',1,0,'plantCheck',!td.plantCheck,'Already measured today',()=>{td.plantCheck=1;fx2('plantCheck','Measured how tall the plants grew.','NASA\'s Veggie garden grew lettuce on the ISS. Astronauts first ate space-grown lettuce in 2015.')});
+  if(c.mod==='solar')A('Brush dust off the panels',1,0,'panelClean',!td.panelClean,'Already cleaned today',()=>{td.panelClean=1;S.power=clampP(S.power+3);fx2('panelClean','Brushed the dust off. +3 power.','Wind gusts sometimes cleaned the Spirit and Opportunity rovers\' solar panels and gave them a power boost.')},'+3 power');
+  if(c.mod==='nuclear')A('Check the reactor heat output',1,0,'reactor',!td.reactor,'Already checked today',()=>{td.reactor=1;fx2('reactor','Logged the reactor temperature.','NASA\'s Kilopower test in 2018 showed a small fission reactor can make steady power day or night.')});
+  if((c.mod==='wall'||c.mod==='tank')&&touchesShelter(S.ax,S.ay))A('Measure how much your shield blocks',2,0,'shieldTest',!acts.shieldTest,'Already done this mission',()=>{acts.shieldTest=1;fx2('shieldTest',`Measured radiation on both sides of the shield. Your shelter shield is ${shield()}.`,'Water and polyethylene are rich in hydrogen, which makes them some of the best radiation shields.')});
+  if(poi==='rocks')A('Scan rocks with a spectrometer',1,0,'spectro',!c.spec,'Already scanned here',()=>{c.spec=true;fx2('spectro','Scanned the rocks and found iron, silicon and magnesium.','Curiosity\'s ChemCam zaps rocks with a laser and reads the glowing spark to learn what they are made of.')});
+  if(poi==='meteor')A('Measure the impact crater',1,0,'crater',!c.crater,'Already measured',()=>{c.crater=true;fx2('crater','Measured the crater around the meteorite.','Impact craters are usually about 10 to 20 times wider than the space rock that made them.')});
+  if(poi==='ice')A('Map buried ice with ground radar',2,0,'radar',!c.radar,'Already mapped',()=>{c.radar=true;fx2('radar','Radar shows ice buried under the dust.',mars?'Perseverance\'s RIMFAX radar can see about 10 meters under the ground.':'Orbiters use radar to search for ice in craters that never see sunlight.')});
+  if(poi==='river')A('Sieve sand from the riverbed',2,0,'sand',!c.sand,'Already sieved',()=>{c.sand=true;fx2('sand','Found smooth, rounded grains in the sand.','Rounded pebbles found by Curiosity showed that streams of water once flowed on Mars.')});
+  if(poi==='outcrop')A('Map the rock layers',3,0,'layers',!c.layers,'Already mapped',()=>{c.layers=true;fx2('layers','Mapped every layer in the outcrop.','Rock layers are like pages in a history book. Curiosity is reading the layers of Mount Sharp.')});
+  if(c.t!=='rocket'&&!c.mod&&c.t==='plain'){
+    A('Measure the ground temperature',1,0,'groundTemp',!td.groundTemp,'Already measured today',()=>{td.groundTemp=1;fx2('groundTemp','Pushed a thermometer into the ground.',mars?'Near the equator, Mars ground can reach about 20 C at midday and drop below -70 C at night.':'Moon ground can reach about 120 C in sunlight and -130 C at night.')});
+    A(mars?'Watch the blue sunset':'Watch Earth hang in the sky',1,0,'sunset',!acts.sunset,'Already done this mission',()=>{acts.sunset=1;fx2('sunset',mars?'Watched a blue sunset.':'Watched Earth in the black sky.',mars?'Fine dust scatters blue light near the Sun, so Martian sunsets look blue.':'From the near side of the Moon, Earth stays in almost the same spot in the sky.')});
+    A(mars?'Set up a wind sensor':'Place a laser mirror',2,0,'instrument',!acts.instrument,'Already set up this mission',()=>{acts.instrument=1;fx2('instrument',mars?'Set up a wind sensor.':'Placed a laser mirror.',mars?'Perseverance\'s MEDA weather station measures wind, dust, temperature and pressure on Mars.':'Apollo astronauts left mirrors on the Moon. Scientists still bounce lasers off them to measure the distance to within millimeters.')});
+    A('Set up a seismometer',3,0,'seismo',!acts.seismo,'Already set up this mission',()=>{acts.seismo=1;fx2('seismo','Set up a seismometer to listen for quakes.',mars?'NASA\'s InSight lander recorded more than 1,300 marsquakes.':'Seismometers left by Apollo astronauts recorded thousands of moonquakes.')});
+  }
+  return L;
+}
+function doAction(a){if(!a.ok||S.over||S.waiting||isBusy())return;walkTarget=null;spend(a.ap,a.power);a.fn();checkFail();save();render()}
+
+// ---------- movement & building ----------
+function moveTo(x,y){
+  if(S.over||S.waiting)return;
+  if(x===S.ax&&y===S.ay){walkTarget=null;return}
+  walkTarget=[x,y];if(!isBusy()&&now()>=nextStep)stepToward();
+}
+function stepToward(){
+  if(!walkTarget)return;const [x,y]=walkTarget;
+  if(S.ax!==x)S.ax+=Math.sign(x-S.ax);else S.ay+=Math.sign(y-S.ay);
+  reveal(S.ax,S.ay,2);nextStep=now()+STEP_MS;
+  if(!isSafe(S.ax,S.ay)){S.rad=clamp(S.rad-B().step*mult()*(count('rover')?0.5:1))}
+  // walking uses suit power: 1 power every 2 steps (every 4 with a suitport)
+  S.walkSteps=(S.walkSteps||0)+1;if(S.walkSteps%(count('suitport')?4:2)===0)S.power=clampP(S.power-1);
+  if(S.ax===x&&S.ay===y)walkTarget=null;
+  if(!checkFail()){save();render()}
+}
+function nextToOutpost(x,y){for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if((dx||dy)&&nx>=0&&ny>=0&&nx<W&&ny<H&&T(nx,ny).mod)return true}return false}
+// Build near the rocket, or right next to any module you already built, so the outpost can grow outward.
+function rebuild(x,y){
+  const c=T(x,y);if(!c.mod||S.waiting||S.over)return;
+  if(isBusy()){toast('Finish your current job first.');return}
+  const m=MODS[c.mod],MT=MATS[matSel];
+  if((c.mat||'alu')===matSel){toast(`This ${m.name.toLowerCase()} is already ${MT.name.toLowerCase()}. Pick a different material.`);return}
+  const cr=Math.ceil(mCrates(m,matSel)/2),pw=mPow(m,matSel);
+  if(S.crates<cr){toast(`Rebuilding needs ${cr} crates.`);return}
+  if(!affordable(pw)){toast(`Rebuilding needs ${pw} power, and you must keep ${nightReserve()} for tonight.`);return}
+  const old=MATS[c.mat||'alu'].name;c.mat=matSel;S.crates-=cr;S.power=clampP(S.power-pw);busyFor(MT.h);walkTarget=null;
+  addLog(`Rebuilt the ${m.name.toLowerCase()}: ${old.toLowerCase()} → ${MT.name.toLowerCase()}.`,'good',MT.fact);
+  editMode=false;save();render();
+}
+function canBuildAt(x,y){const c=T(x,y);return c.seen&&c.t==='plain'&&!c.mod&&(cheb(x,y,RX,RY)<=3||nextToOutpost(x,y))}
+function build(x,y){
+  const m=MODS[buildSel];
+  if(S.waiting||S.over)return;
+  if(isBusy()){toast('Finish your current job first.');return}
+  const cr=mCrates(m,matSel),pw=mPow(m,matSel),MT=MATS[matSel];
+  if(S.crates<cr){toast('Not enough crates.');return}
+  if(!affordable(pw+(POWER_MODS.includes(buildSel)?0:Math.ceil(2*mult())))){toast(`Building a ${MT.name.toLowerCase()} ${m.name.toLowerCase()} needs ${pw} power, and you must keep ${nightReserve()} for tonight. You have ${S.power}.`);return}
+  if(!canBuildAt(x,y)){toast('Build on an empty, explored tile within 3 tiles of the rocket.');return}
+  T(x,y).mod=buildSel;T(x,y).mat=matSel;S.crates-=cr;S.power=clampP(S.power-pw);busyFor(MT.h);walkTarget=null;
+  let note='';if((buildSel==='wall'||buildSel==='tank')&&!touchesShelter(x,y))note=' It does not touch the rocket or a habitat, so it gives no shielding.';
+  addLog(`Built a ${m.name.toLowerCase()} from ${MT.name.toLowerCase()}.${note}`,note?'bad':'good',MODFACT[buildSel]?MODFACT[buildSel]+' '+MT.fact:MT.fact);
+  buildSel=null;save();render();
+}
+
+// ---------- sol cycle ----------
+function endSol(){
+  if(S.over)return;
+  const p=nightPlan(),ev=S.events[S.sol],evn=B().events[ev];
+  S.power=clampP(S.power+p.dP);addLS(p.dW,p.dO,p.dF);if(p.empty.length&&!S.firstOut)S.firstOut=p.empty[0];S.rad=clamp(S.rad+p.dR);
+  walkTarget=null;busyUntil=0;buildSel=null;
+  addLog(`Night of sol ${S.sol}: ${evn[0]}. ${fx('Power',p.dP)}, ${lsFx(p.dW,p.dO,p.dF)}, ${fx('radiation shield',p.dR)}.`,ev==='clear'?'':'bad');
+  if(!p.safe)addLog('You slept outside the safe zone. That was risky!','bad');
+  if(p.empty.length)addLog(`Out of ${p.empty.join(' and ')}! The crew is in crisis, so everything else drains fast (-${Math.round(30*mult())} each a night). Life support runs out when the meter hits 0. Fix it fast!`,'bad');
+  if(p.dark)addLog('Batteries ran empty! Heaters switched to emergency mode: water froze and the air recycler stopped (extra water and oxygen lost). Build more power.','bad');
+  if(checkFail())return;
+  if(MODE().survival){award('survival');addLog(`Survived sol ${S.sol}.`,'sci')}
+  if(S.sol>=7){finish(true);return}
+  S.sol++;S.timeLeft=S.solLen;S.today={};S.waiting=true;
+  if(S.sol===4){S.crates+=4;S.cratesStart+=4;addLog('Supply drop! A cargo lander brought 4 more crates.','good','Cargo ships like SpaceX Dragon and Northrop Grumman Cygnus bring food, water, parts and experiments to the ISS several times a year.')}
+  const ne=evText(S.sol);
+  if(S.events[S.sol]!=='clear')addLog(`Morning alert, sol ${S.sol}: ${ne[0]}. ${ne[1]}`,'bad');else addLog(`Sol ${S.sol} begins. ${ne[0]}.`);
+  save();render();
+  showBriefing(`Night of sol ${S.sol-1} is over`,
+    `<p style="margin:0">${evn[0]}. Overnight: ${fx('power',p.dP)}, ${lsFx(p.dW,p.dO,p.dF)}, ${fx('radiation shield',p.dR)}. Life support is now ${S.life} (💧${S.water} 🫁${S.oxygen} 🍎${S.food}).${p.empty.length?` <b style="color:var(--bad)">Out of ${p.empty.join(' and ')}: life support is draining fast!</b>`:''}</p><p style="margin:0;color:var(--muted)">Your astronaut used about 0.84 kg of oxygen, 1.8 kg of food and 4 L of water (NASA daily rates).${p.safe?'':' You slept outside the safe zone!'}</p>
+     <p style="margin:0"><b>Sol ${S.sol} forecast:</b> ${ne[0]}. ${ne[1]}</p>`,`Start sol ${S.sol}`);
+}
+const sg=n=>(n>=0?'+':'')+n;
+// Colour-coded change: all three meters are better when higher, so up = good (green), down = bad (red).
+const fx=(name,n)=>`<span class="dx ${n>0?'up':n<0?'down':'zero'}">${name} ${n>0?'▲ +'+n+' good':n<0?'▼ '+n+' bad':'0'}</span>`;
+const fxText=t=>String(t).replace(/([+-]\d+(?:\.\d+)?) (life support|radiation shield|power|water|oxygen|food)/g,(m,n,k)=>`<span class="dx ${+n>0?'up':'down'}">${n} ${k} ${+n>0?'▲':'▼'}</span>`);
+function checkFail(){
+  const outLS=S.life<=0?(LS.find(([k])=>S[k]<=0)||LS[0]):null;
+  if(MODE().noLose){if(outLS||S.rad<=0){LS.forEach(([k])=>S[k]=Math.max(S[k],5));syncLife();S.rad=Math.max(S.rad,5);addLog('Free play: the crew was rescued just in time. Keep going!','bad')}return false}
+  const dead=outLS?`Life support ran out. It started when the outpost ran out of ${S.firstOut||outLS[0]}.`:S.rad<=0?'Radiation exposure got too high.':'';
+  if(dead){addLog(dead,'bad');finish(false,dead);return true}return false;
+}
+const REQN={hab:'🏠 Habitat',power:'⚡ Power (solar panel or reactor)',comms:'📡 Comms dish',green:'🌱 Greenhouse',med:'🩺 Med bay'};
+const reqList=()=>MODE().req||[];
+const reqHas=k=>k==='power'?count('solar')+count('nuclear')>0:count(k)>0;
+const reqMissing=()=>reqList().filter(k=>!reqHas(k));
+function finish(survived,why=''){
+  const miss=reqMissing(),built=!miss.length;
+  if(survived&&!built&&!why)why=`Your outpost was missing required modules: ${miss.map(k=>REQN[k]).join(', ')}.`;
+  const won=survived&&built&&S.total>=S.target;
+  S.over={survived,won,why,built};save();render();showEnd();
+}
+function rank(p){if(!S.target)return 'Explorer';return p>=S.target*2?'Mission Commander':p>=S.target?'Lead Scientist':p>=S.target/2?'Explorer':'Cadet'}
+function showEnd(){
+  const o=S.over,used=S.cratesStart-S.crates;
+  const rows=Object.entries(S.sci).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${SCI[k][0]}</td><td class="pts">${v/SCI[k][1]}×</td><td class="pts">${v}</td></tr>`).join('')||'<tr><td colspan="3">No science yet.</td></tr>';
+  $('#overlayCard').innerHTML=`
+    <p class="label">${B().name} · ${MODE().name} · sol ${S.sol} of 7</p>
+    <h2 style="font-size:2rem">${o.won?'Mission success!':o.survived?(o.built===false?'You survived, but the outpost was not finished':'You survived, but science fell short'):'Mission aborted'}</h2>
+    <p style="margin:0;color:var(--muted)">${o.why||(o.won?(S.target?'Your outpost worked and your science is heading to Earth.':'Free play complete. Try a scored mode next!'):`You needed ${S.target} science points.`)}</p>
+    <div class="stats">
+      <div class="stat"><div class="label">Science</div><div class="num">${S.total}</div></div>
+      <div class="stat"><div class="label">Rank</div><div style="font-family:var(--display);font-weight:700">${rank(S.total)}</div></div>
+      <div class="stat"><div class="label">Crates used</div><div class="num">${used}/${S.cratesStart}</div></div>
+      <div class="stat"><div class="label">Points per crate</div><div class="num">${used?(S.total/used).toFixed(1):'–'}</div></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Science</th><th class="pts">Times</th><th class="pts">Points</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="home-btns" style="justify-content:flex-start"><button class="btn primary" id="endNew">New outpost</button><button class="btn" id="endHome">Home</button></div>`;
+  $('#overlay').hidden=false;
+  $('#endNew').onclick=()=>{$('#overlay').hidden=true;clearSave();show('setup')};
+  $('#endHome').onclick=()=>{$('#overlay').hidden=true;clearSave();show('home')};
+}
+
+// ---------- render ----------
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
+const POI={rocks:'🪨',meteor:'☄️',ice:'🧊',outcrop:'⛰️',river:'〰️',lavatube:'🕳️',basalt:'🌋',craterRim:'⭕',gullies:'🏞️',frost:'❄️',spherules:'🫐',rille:'〽️',highland:'🏔️',swirl:'🌀',clay:'🏺',dunes:'🏜️',shadow:'🌑',glass:'✨',boulder:'🥌'};
+const NAMES={basalt:'Lava rock field (basalt)',craterRim:'Crater rim',gullies:'Gullies on a slope',frost:'Carbon dioxide frost',spherules:'Hematite "blueberries"',rille:'Sinuous lava rille',highland:'Bright highland rocks',swirl:'Lunar swirl',plain:'Open ground',rocket:'Rocket',rocks:'Rock field',meteor:'Meteorite crater',ice:'Ice deposit',outcrop:'Rock outcrop',river:'Ancient riverbed',lavatube:'Lava tube cave (natural shelter)',clay:'Clay deposit',dunes:'Sand dunes',shadow:'Permanently shadowed crater',glass:'Volcanic glass beads',boulder:'Rolling-boulder track'};
+function render(){
+  const b=B();
+  $('#hudBody').textContent=b.name+' · '+MODE().name;
+  $('#hudTarget').hidden=!S.target;
+  $('#hudSol').textContent=S.sol;$('#hudSci').textContent=S.total;$('#hudTarget').textContent='target '+S.target;
+  $('#lgRiver').hidden=S.body!=='mars';document.querySelectorAll('.lgMars').forEach(e=>e.hidden=S.body!=='mars');document.querySelectorAll('.lgMoon').forEach(e=>e.hidden=S.body!=='moon');
+  const ms=[['Radiation shield','rad','--rad'],['Life support','life','--life'],['Power','power','--power']];
+  syncLife();
+  $('#meters').innerHTML=ms.map(([n,k,c])=>{const lo=k==='life'?LS.some(([q])=>S[q]<25):S[k]<25;return `<div class="meter ${lo?'low':''}"><div class="top"><span class="label">${n}</span><span class="num">${S[k]}${k==='power'?'/'+PMAX:''}</span></div><div class="bar"><i style="width:${k==='power'?S[k]/PMAX*100:S[k]}%;background:var(${c})"></i></div>${k==='life'?`<div class="lsParts">${LS.map(([q,nm])=>`<span class="${S[q]<25?'lsLow':''}" title="${nm.slice(3)}">${nm.slice(0,2)} ${S[q]>0?S[q]:'OUT'}</span>`).join('')}</div>`:''}</div>`}).join('');
+  renderClock();
+  // map
+  const [h,s,l]=b.ground;
+  const map=$('#map');map.innerHTML='';
+  S.tiles.forEach((c,i)=>{const x=i%W,y=(i/W)|0,el=document.createElement('button');el.className='cell';
+    el.setAttribute('aria-label',c.seen?(c.mod?MODS[c.mod].name:NAMES[c.t])+` at ${x+1},${y+1}`:'Unexplored');
+    if(!c.seen){el.classList.add('unseen');el.tabIndex=-1}
+    else{el.style.background=`radial-gradient(circle at ${30+c.s*40}% ${30+c.s*30}%, hsl(${h} ${s}% ${l+8}%), hsl(${h} ${s}% ${l-2+c.s*6}%))`;
+      if(isSafe(x,y))el.classList.add('safe');
+      if(buildSel&&canBuildAt(x,y))el.classList.add('buildable');
+      let icon=c.t==='rocket'?'🚀':c.mod?MODS[c.mod].icon:POI[c.t]||'';
+      if(c.t!=='rocket'&&!c.mod&&POI[c.t]&&(c.done||(c.t==='rocks'&&c.sampled)))el.classList.add('done');
+      const here=x===S.ax&&y===S.ay;
+      if(editMode&&c.mod)el.classList.add('buildable');
+      el.innerHTML=(here?'<span class="astro">🧑‍🚀</span>':'')+(icon?`<span class="poi">${icon}</span>`:'')+(c.mod?`<span class="mtag" style="background:${MATS[c.mat||'alu'].color}" title="${MATS[c.mat||'alu'].name}">${MATS[c.mat||'alu'].tag}</span>`:'');
+    }
+    el.onclick=()=>{if(paused||S.waiting)return;if(editMode&&c.mod)rebuild(x,y);else if(buildSel&&canBuildAt(x,y))build(x,y);else moveTo(x,y)};
+    map.appendChild(el)});
+  $('#map').style.opacity=paused?'.25':'';
+  // here panel
+  const c=T(S.ax,S.ay);
+  $('#hereTitle').textContent=c.t==='rocket'?'Rocket (your lab)':c.mod?`${MODS[c.mod].name} (${MATS[c.mat||'alu'].name})`:NAMES[c.t];
+  $('#hereText').textContent=(isSafe(S.ax,S.ay)?'Inside the safe zone. ':`Outside the safe zone: walking uses 1 power every ${count('suitport')?4:2} steps, and each step lowers your radiation shield by ${b.step*mult()*(count('rover')?0.5:1)}${count('rover')?' (rover cabin)':''}. `)+(c.t==='plain'&&!c.mod?'Walk to a marked spot or a module to do science.':'');
+  const acts=actionsHere();
+  const ac=$('#actions');ac.innerHTML='';
+  if(!acts.length)ac.innerHTML='<p class="here">Nothing to do on this tile.</p>';
+  acts.forEach(a=>{const bt=document.createElement('button');bt.className='act';bt.disabled=!a.ok||!!S.over||isBusy();
+    bt.innerHTML=`<b>${a.label}<span class="tier ${a.tier}">${TIERS[a.tier].name}</span></b><span class="pts">+${a.pts}</span><small>${secs(a.ap)}s${a.power?` · ${a.power} power`:''}${a.note?' · '+fxText(a.note):''}${a.why?' · '+a.why:''}</small>`;
+    bt.onclick=()=>doAction(a);ac.appendChild(bt)});
+  // palette
+  $('#crates').textContent=`${S.crates}/${S.cratesStart}`;$('#tabCrates').textContent=`(${S.crates} crates)`;
+  {const L=reqList();$('#reqList').innerHTML=L.length?`<span class="label" style="align-self:center">Required to win:</span>`+L.map(k=>`<span class="chip ${reqHas(k)?'live':'off'}">${reqHas(k)?'✓':'✗'} ${REQN[k]}</span>`).join(''):''}
+  const pal=$('#palette');pal.innerHTML='';
+  Object.entries(MODS).forEach(([k,m])=>{const bt=document.createElement('button');bt.className='mod';bt.setAttribute('aria-pressed',buildSel===k);
+    const cr=mCrates(m,matSel),pw=mPow(m,matSel);const lowP=!affordable(pw);bt.disabled=S.crates<cr||lowP||!!S.over;bt.innerHTML=`<b>${m.icon} ${m.name}</b><small class="num" style="color:var(--fg)">${cr} 📦 · ${pw} ⚡ power · ${secs(MATS[matSel].h)} s${lowP?' · not enough power (save some for tonight)':''}</small><small>${m.desc}</small>`;
+    bt.onclick=()=>{editMode=false;buildSel=buildSel===k?null:k;render()};pal.appendChild(bt)});
+  $('#matbox').hidden=!buildOpen;
+  $('#matrow').innerHTML=Object.entries(MATS).map(([k,M])=>`<button class="mat" data-mat="${k}" aria-pressed="${k===matSel}"><i style="background:${M.color}"></i>${M.name}</button>`).join('');
+  document.querySelectorAll('#matrow .mat').forEach(b=>b.onclick=()=>{matSel=b.dataset.mat;render()});
+  $('#matInfo').textContent=MATS[matSel].desc;
+  $('#btnEdit').textContent=editMode?'Cancel changing material':`Change a module's material`;
+  $('#palette').hidden=!buildOpen;$('#btnBuild').textContent=buildOpen?'Close build menu':'Open build menu';$('#btnBuild').setAttribute('aria-expanded',buildOpen);
+  $('#buildHint').textContent=editMode?`Click a module on the map (gold) to rebuild it from ${MATS[matSel].name.toLowerCase()}. Rebuilding costs half the crates and the full power.`:!buildOpen?'Building is up to you. Walk and explore freely, and open the build menu only when you want to add a module.':buildSel?`Placing ${MODS[buildSel].name}. Click a gold tile to build it. Clicking any other tile just walks there.`:'Pick a module, then click a gold tile. Gold tiles are near the rocket or next to a module you built. Building takes 8 seconds and uses 3 power per crate.';
+  // inventory
+  const i=S.inv;
+  $('#inv').innerHTML=`<span class="chip">📷 ${i.pictures} pictures</span><span class="chip">🧪 ${i.samples} samples</span><span class="chip">☄️ ${i.meteors} meteorites</span><span class="chip">💾 ${i.data} data</span><span class="chip">🛡️ shield ${shield()}</span>`;
+  // forecast
+  const ev=evText(S.sol);
+  let fc=`<div class="fc"><span class="label">Today</span><span><b>${ev[0]}</b>. ${ev[1]}</span></div>`;
+  if(S.sol<7){if(count('weather')){const ne=evText(S.sol+1);fc+=`<div class="fc"><span class="label">Tomorrow</span><span><b>${ne[0]}</b></span></div>`}
+    else fc+=`<div class="fc"><span class="label">Tomorrow</span><span style="color:var(--muted)">Build a weather station to see it.</span></div>`}
+  fc+=`<div class="fc"><span class="label">Real Sun</span><span>${esc(realDayText(S.sol))} <small style="color:var(--muted)">(NOAA data)</small></span></div>`;
+  $('#forecast').innerHTML=fc;
+  const p=nightPlan();
+  $('#tonight').innerHTML=`Tonight, if you sleep here: ${fx('power',p.dP)} · ${fx('water',p.dW)} · ${fx('oxygen',p.dO)} · ${fx('food',p.dF)} · ${fx('radiation shield',p.dR)}`;
+  $('#log').innerHTML=S.log.map(l=>`<li class="${l.c}"><span class="label">Sol ${l.sol}</span> ${fxText(l.m)}${l.f?`<span class="fact">${l.f}</span>`:''}${l.img&&/^https:\/\//.test(l.img)?`<img src="${esc(l.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</li>`).join('');
+}
+
+function renderClock(){
+  const t=Math.max(0,S.timeLeft),m=Math.floor(Math.ceil(t)/60),sec=Math.ceil(t)%60;
+  $('#clockNum').textContent=`${m}:${String(sec).padStart(2,'0')}`;
+  $('#clockBar').style.width=(100*t/S.solLen)+'%';
+  const urgent=t<=15;$('#clock').classList.toggle('urgent',urgent);
+  const safe=isSafe(S.ax,S.ay);let msg='';
+  if(isBusy())msg=`<span class="busy">Working… ${Math.ceil((busyUntil-now())/1000)}s</span>`;
+  else if(walkTarget)msg='<span class="busy">Walking…</span>';
+  if(!safe&&t<=30)msg+=` <span class="warn">Night is coming. Get back to the safe zone!</span>`;
+  else if(!msg)msg=safe?'<span style="color:var(--muted)">In the safe zone</span>':'<span style="color:var(--muted)">Outside the safe zone</span>';
+  $('#clockMsg').innerHTML=msg;
+  $('#btnPause').textContent=paused?'Resume':'Pause';
+}
+function showBriefing(title,body,btn){
+  $('#overlayCard').innerHTML=`<p class="label">${B().name} · sol ${S.sol} of 7</p><h2 style="font-size:1.8rem">${title}</h2>${body}
+    <p style="margin:0"><b>Real space weather today.</b> ${esc(realDayText(S.sol))}</p>
+    <p style="margin:0;color:var(--muted)">You have ${S.solLen%60?Math.round(S.solLen)+' seconds':(S.solLen/60)+' minutes'} of daylight. The day ends on its own when the timer hits zero.</p>
+    <div><button class="btn primary" id="briefGo">${btn}</button></div>`;
+  $('#overlay').hidden=false;
+  $('#briefGo').onclick=()=>{$('#overlay').hidden=true;S.waiting=false;paused=false;save();render()};
+  $('#briefGo').focus();
+}
+let lastTick=now(),saveAcc=0;
+setInterval(()=>{
+  const t=now(),dt=(t-lastTick)/1000;lastTick=t;
+  if(!S||S.over||S.waiting||paused||$('#game').hidden||document.hidden)return;
+  S.timeLeft-=dt;
+  if(S.timeLeft<=0){S.timeLeft=0;endSol();return}
+  const busy=isBusy();
+  if(wasBusy&&!busy){wasBusy=false;render()}else if(busy)wasBusy=true;
+  if(walkTarget&&!busy&&t>=nextStep)stepToward();
+  renderClock();
+  saveAcc+=dt;if(saveAcc>2){saveAcc=0;save()}
+},100);
+
+// ---------- screens ----------
+function show(id){['home','how','setup','game'].forEach(s=>$('#'+s).hidden=s!==id);
+  if(id==='home'){const sv=load();$('#btnContinue').disabled=!sv||!!sv.over;$('#btnContinue').title=sv&&!sv.over?`${BODY[sv.body].name}, sol ${sv.sol}`:'No saved outpost yet'}
+  window.scrollTo(0,0)}
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
+$('#btnHow').onclick=()=>show('how');
+function showTab(id){document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.tab===id));document.querySelectorAll('.tabp').forEach(pn=>pn.hidden=pn.id!==id)}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>showTab(t.dataset.tab));
+$('#btnNew').onclick=()=>show('setup');
+$('#btnContinue').onclick=()=>{const sv=load();if(sv&&!sv.over){S=sv;buildSel=null;walkTarget=null;busyUntil=0;
+  if(S.solLen==null){S.solLen=MODE().sol;S.timeLeft=S.solLen}
+  S.waiting=true;show('game');render();
+  showBriefing(`Welcome back to sol ${S.sol}`,`<p style="margin:0">${B().events[S.events[S.sol]][0]} today. Your timer picks up where you left it: ${Math.ceil(S.timeLeft)} seconds left.</p>`,'Resume')}};
+document.querySelectorAll('#pickBody .choice').forEach(b=>b.onclick=()=>{pickBody=b.dataset.body;document.querySelectorAll('#pickBody .choice').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+$('#pickDiff').innerHTML=Object.entries(MODES).map(([k,M])=>`<button class="choice" data-diff="${k}" aria-pressed="${k===pickDiff}"><b>${M.name}</b><small>${M.crates} crates, ${M.power} power, ${M.sol%60?M.sol+'-second':M.sol/60+'-minute'} sols. ${M.target?`Target: ${tgt(M,'mars')} on Mars, ${tgt(M,'moon')} on the Moon.`:''}</small><small>${M.blurb}</small></button>`).join('');
+document.querySelectorAll('#pickDiff .choice').forEach(b=>b.onclick=()=>{pickDiff=b.dataset.diff;document.querySelectorAll('#pickDiff .choice').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+$('#btnLaunch').onclick=()=>{newGame(pickBody,pickDiff);buildSel=null;walkTarget=null;busyUntil=0;show('game');render();
+  showBriefing('Touchdown!',`<p style="margin:0">Build your outpost, explore, and do science. Walking takes 0.8 seconds a tile and jobs take a few seconds each.</p><p style="margin:0">When night falls, be inside the blue safe zone next to your rocket or modules.</p><div style="padding:10px 12px;gap:6px;display:grid;background:var(--panel2);border:1px solid var(--line);border-radius:10px"><b>☀️ This week's space weather</b><span>${esc(weekText())}</span>${wxCompareHtml(wxCompare(WX_PREV,WX))}</div>`,'Start sol 1')};
+$('#btnBuild').onclick=()=>{buildOpen=!buildOpen;if(!buildOpen){buildSel=null;editMode=false}render()};
+$('#btnEdit').onclick=()=>{editMode=!editMode;buildSel=null;render()};
+$('#btnAsk').onclick=openAsk;$('#btnCall').onclick=callEarth;$('#askCall').onclick=callEarth;
+renderSpaceWx();
+$('#btnAskHome').onclick=openAsk;$('#askClose').onclick=closeAsk;
+$('#askForm').onsubmit=e=>{e.preventDefault();askQuestion($('#askInput').value)};
+$('#askBox').addEventListener('click',e=>{if(e.target.id==='askBox')closeAsk()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#askBox').hidden)closeAsk()});
+$('#btnPause').onclick=()=>{if(!S||S.over||S.waiting)return;paused=!paused;$('#map').style.opacity=paused?'.25':'';renderClock()};
+$('#btnQuit').onclick=()=>{paused=false;$('#map').style.opacity='';save();show('home')};
+const BASIS={hab:'ISS modules and NASA habitat designs: air and water recycling plus shelter',solar:'ISS solar arrays; Spirit and Opportunity rovers',nuclear:'NASA Kilopower fission reactor test (2018)',wall:'NASA 3D-printed habitat challenge: regolith shielding',
+  tank:'Water is a strong radiation shield (hydrogen-rich)',green:'NASA Veggie plant chamber on the ISS',comms:'Deep Space Network and Mars relay orbiters',weather:'Perseverance MEDA weather station',med:'ISS crew health checks',drill:'NASA lunar and Mars ice-mining studies'};
+function dataTables(){
+  const T=(cap,head,rows)=>`<div class="table-wrap"><table class="dataT"><caption style="text-align:left;font-weight:700;padding:4px 0">${cap}</caption><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const wx=[1,2,3,4,5,6,7].map(sol=>{const r=realDay(sol);return[`Sol ${sol}`,fmtD(r.d),r.n,r.big||'none',r.kp?`Kp ${r.kp} (${gScale(r.kp)}) geomagnetic storm`:'calm']});
+  const rates=[['💧 Water','about 3 L to drink + 1 L to wash = 4 L','16','25 L','Grow food or plants: -4. Dirt sample lab: -2.'],
+    ['🫁 Oxygen','0.84 kg','16','5.25 kg','Hull leaks from meteors and grit from dust devils lower it.'],
+    ['🍎 Food','1.8 kg','12','15 kg','Food stores last longer, so it drains slower.']];
+  const pw=[['Walking','1 power every 2 steps (every 4 with a suitport)'],['Hygiene (hot water)','-4 power a night'],['Heaters and module upkeep','-(6 + 2 per non-power module) a night, times storm strength'],
+    ['Science tasks',Object.values(TIERS).map(t=>`${t.name} ${t.pw}`).join(', ')+' power (minimum)'],['Building','3 power per crate, times the material (regolith 1.25x, polyethylene 1.5x, Kevlar 0.5x)'],
+    ['Solar panel','+18 a sol on Mars, +20 on the Moon. Dust storm 30%, dust devils 70%, global dust storm 20%'],['Fission reactor','+20 a sol'],['Fuel cell','+10 a sol'],
+    ['Storm costs','Deep cold -10, moonquake -8, global dust storm or CME -6'],['Power tank','Holds 150. If it is empty at night, water and oxygen each lose 30 (battery bank adds a 20 reserve)']];
+  const mods=Object.entries(MODS).map(([k,m])=>[`${m.icon} ${m.name}`,m.cost,m.desc,MODFACT[k]||BASIS[k]||'']);
+  const modes=Object.entries(MODES).map(([k,M])=>[M.name,M.crates,M.power,'100 / 100 / 100','100',`${M.sol} s`,`${M.mult}x`,M.target?tgt(M,'mars'):'none',M.target?tgt(M,'moon'):'none',(M.req||[]).map(r=>REQN[r]).join(', ')||'none']);
+  return T(`Real space weather, ${fmtD(WX.from)} to ${fmtD(WX.to)} (source: ${WX.src})`,['Game day','Real date','Solar flares','Biggest flare','Earth\'s magnetic field'],wx)
+   +T('NASA daily use per astronaut and the game scale',['Resource','NASA daily use','Game points a sol','A full store (100) holds','Other uses'],rates)
+   +T('Power (fuel) costs and sources',['What','Power'],pw)
+   +T('Modules and the NASA systems they are based on',['Module','Crates','What it does','Real NASA basis'],mods)
+   +T('Game modes: starting meters and science targets',['Mode','Crates','Start power (of 150)','Start water / oxygen / food','Start radiation shield','Day length','Storm strength','Mars target','Moon target','Required modules'],modes)
+   +'<small>A cargo lander also brings +4 crates on the morning of sol 4.</small>';
+}
+$('#dataTables').innerHTML=dataTables();
+$('#scoreTable tbody').innerHTML=Object.entries(SCI).sort((a,b)=>a[1][1]-b[1][1]).map(([k,[n,p]])=>{const t=tierOf(k);return `<tr><td>${n}</td><td><span class="tier ${t}" style="margin:0">${TIERS[t].name}</span></td><td class="num">${k==='survival'?'automatic':secs(TIERS[t].h)+' s · '+TIERS[t].pw+' ⚡'}</td><td class="pts">+${p}</td></tr>`}).join('');
+document.addEventListener('keydown',e=>{if(!$('#askBox').hidden||e.target.tagName==='INPUT')return;if($('#game').hidden||!S||S.over||S.waiting||paused)return;
+  const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];
+  if(e.key==='Escape'&&buildSel){buildSel=null;render();return}
+  if(d){e.preventDefault();const nx=S.ax+d[0],ny=S.ay+d[1];if(nx>=0&&ny>=0&&nx<W&&ny<H)moveTo(nx,ny)}});
+window.__outpost={get S(){return S},get WX(){return WX},get WXP(){return WX_PREV},wxCompare,dataTables,realDayText,askKB,KB,earthHints,callEarth,askQuestion,setMat:k=>{matSel=k},rebuild,shield,skipBusy:()=>{busyUntil=0},walkTo1:(x,y)=>{walkTarget=[x,y];stepToward()},stepToward,isBusy,newGame,moveTo,endSol,actionsHere,doAction,build:(k,x,y)=>{buildSel=k;build(x,y)},nightPlan,render};
+try{$('#nasaKey').value=localStorage.getItem(KEYK)||''}catch(e){}
+$('#nasaSave').onclick=()=>{const v=$('#nasaKey').value.trim();try{v?localStorage.setItem(KEYK,v):localStorage.removeItem(KEYK)}catch(e){}NASA.live={};renderNasaStatus();loadNasa(true)};
+$('#nasaClear').onclick=()=>{$('#nasaKey').value='';try{localStorage.removeItem(KEYK);localStorage.removeItem(CACHEK)}catch(e){}NASA.data={flares:null,neo:null,photos:null,apod:null};NASA.live={};renderNasaStatus()};
+show('home');renderNasaStatus();loadNasa();
+})();
+</script>
+
+</body>
+</html>
