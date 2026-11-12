@@ -165,6 +165,11 @@ td.pts,th.pts{text-align:right;font-family:var(--mono);color:var(--gold)}
 .src .chip.live{border-color:var(--good);color:var(--good)}
 .src .chip.off{color:var(--muted)}
 .endsol{width:100%}
+#mg{z-index:40}
+#mgCanvas{width:100%;height:auto;aspect-ratio:8/5;border-radius:10px;border:1px solid #5a6690;background:#000;display:block}
+.mg-bar{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-family:var(--display);font-weight:700}
+.mg-offer{display:grid;gap:8px;padding:10px 12px;background:var(--panel2);border:1px solid var(--gold);border-radius:10px}
+.mg-offer span{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);border-radius:10px;padding:10px 16px;max-width:min(90vw,480px);z-index:20;font-weight:700}
 .overlay{position:fixed;inset:0;background:rgba(2,3,8,.9);-webkit-backdrop-filter:blur(5px) saturate(.5);backdrop-filter:blur(5px) saturate(.5);display:grid;place-items:center;z-index:30;padding:16px}
 .overlay .card,.overlay .ask{background:#222944;border:2px solid #7884ad;border-top:4px solid var(--gold);box-shadow:0 24px 70px rgba(0,0,0,.85),0 0 0 1px #000}
@@ -269,6 +274,7 @@ details.fold>summary{cursor:pointer;font-family:var(--display);font-weight:700;p
       <li>Storms hit most nights. Mars: dust storms, dust devils, great dust storms, deep cold and radiation storms. Moon: solar flares, coronal mass ejections, micrometeorites, meteor showers and moonquakes. A weather station shows tomorrow's storm.</li>
       <li>Real space weather: each sol replays one real day from the latest weekly NOAA snapshot, taken every Monday. The home screen shows what got better and worse since last week. You'll see that day's solar flares, and on the geomagnetic storm day the radio link to Earth is slower.</li>
       <li>Some modules are required to win, and the list grows with the mode. Cadet needs a habitat and power. Junior adds a comms dish, Commander adds a greenhouse, and Veteran adds a med bay. Every module uses crates and power (3 power per crate). Open the build menu whenever you are ready. Walking around never makes you build.</li>
+      <li><b>🎮 Hand-control challenges</b> use the ESP32 joystick (or the arrow keys and Space). <b>Rover dash</b>: the Rover test drive activity, drive to the flag in 20 s for +15 science and a new place on the map. <b>Leak hunt</b>: the morning after a meteor night, patch hull leaks to save oxygen. <b>Supply drop landing</b>: on sol 4, fly the cargo lander in for bonus crates. <b>Sun tracker</b>: on a dust day, keep your solar panels on the Sun to win back power. The timer stops while you play.</li>
       <li>Choose where to place things. Walls and water tanks only shield you if they touch the rocket or a habitat.</li>
       <li>Keep 3 meters up: <b style="color:var(--rad)">Radiation shield</b>, <b style="color:var(--life)">Life support</b> and <b style="color:var(--power)">Power</b>. Life support is made of three parts, 💧 water, 🫁 oxygen and 🍎 food, and the meter shows their average. Water and oxygen drop 16 a night, food drops 12. These match NASA's daily numbers for one astronaut: about 4 L of water (3 L to drink, 1 L to wash), 0.84 kg of oxygen and 1.8 kg of food. Growing plants and lab work use some water too. If one of them runs out, the crew is in crisis and the other two drain fast every night. The mission ends when the life support meter or the radiation shield hits zero. Power is your fuel: walking uses 1 power every 2 steps, and hot water for washing uses 4 every night. The power tank holds 150. If power runs out at night, water freezes and the air recycler stops, so water and oxygen drop fast.</li>
       <li>Walking outside the blue safe zone lowers your radiation shield. All three meters are better when they are higher: a green ▲ is good news, a red ▼ is bad news. Storms and solar flares hit at night.</li>
@@ -362,6 +368,7 @@ details.fold>summary{cursor:pointer;font-family:var(--display);font-weight:700;p
 
 <div class="toast" id="toast" hidden></div>
 <div class="overlay" id="overlay" hidden><div class="card" id="overlayCard"></div></div>
+<div class="overlay" id="mg" hidden><div class="card" id="mgCard" role="dialog" aria-label="Hand-control challenge"></div></div>
 <div class="overlay" id="askBox" hidden><div class="ask" role="dialog" aria-label="Ask Mission Control">
   <header><h3>📡 Ask Mission Control</h3><span style="display:flex;gap:8px;align-items:center"><button class="btn" id="askCall" hidden>📞 Call Earth</button><button class="btn" id="askClose">Close</button></span></header>
   <ul id="askLog" aria-live="polite"></ul>
@@ -395,7 +402,9 @@ const SCI={
   // Hard tasks (25 points): longer, use more power, and most need gear or carry a risk
   coreDrill:['Drill a deep rock core',25], cliff:['Climb down a crater cliff',25], packReturn:['Pack a sample tube for return to Earth',25],
   oxygen:['Make oxygen from local resources',25], relay:['Relay data through an orbiter',25], balloon:['Launch a weather balloon',25],
-  heartStudy:['Run a heart and sleep study',25], solarScope:['Track the Sun with a solar telescope',25]
+  heartStudy:['Run a heart and sleep study',25], solarScope:['Track the Sun with a solar telescope',25],
+  // Joystick mini-game bonus
+  roverDash:['Rover dash: drive to the flag in time',15]
 };
 // Task levels by points: easy 5-15, medium 20-25, challenge 30. Harder tasks take longer.
 const TIERS={veryeasy:{name:'Very easy',h:0.5,pw:1},easy:{name:'Easy',h:0.75,pw:2},medium:{name:'Medium',h:2,pw:5},hard:{name:'Hard',h:2.75,pw:7},challenge:{name:'Challenge',h:3.75,pw:10}}; // science uses power too
@@ -451,7 +460,7 @@ const BODY={
   moon:{name:'Moon',step:1.75,nightOut:12,flare:34,solar:20,ground:[220,8,41],
     events:{clear:['Quiet sky','Nothing special tonight.'],flare:['Solar flare','Radiation storm tonight. Shield up and sleep in the safe zone.'],micro:['Micrometeorite shower','Tiny space rocks punch leaks in the base: up to -36 oxygen. Each wall blocks 12.'],quake:['Moonquake','Cables shake loose: -8 power tonight.'],cme:['Coronal mass ejection','A cloud of particles from the Sun: a smaller radiation storm tonight, and electronics glitch for -6 power. Sleep in the safe zone.'],shower:['Meteor shower','Bigger space rocks than usual: up to -48 oxygen tonight. Each wall blocks 12.']}}
 };
-const ACTIVITIES={jump:'Low-gravity long jump',golf:'Hit a golf ball (like Apollo 14)',rover:'Rover test drive'};
+const ACTIVITIES={jump:'Low-gravity long jump',golf:'Hit a golf ball (like Apollo 14)',rover:'Rover test drive (joystick mini-game)'};
 const FACTS={
   pic:'Curiosity has taken over a million raw images of Mars.',
   dirt:'Perseverance seals rock and soil cores in tubes so scientists on Earth can study them later.',
@@ -1076,6 +1085,7 @@ function shield(){let s=count('hab')>0?6:0;
     if((c.mod==='wall'||c.mod==='tank')&&t)s+=c.mod==='wall'?5:7;
     const M=MATS[c.mat||'alu'];if(M.sh>0&&(t||c.mod==='hab'))s+=M.sh;if(M.sh<0)s+=M.sh});
   return Math.max(0,s)}
+function hullLeak(ev){return ev==='micro'||ev==='shower'?3*(Math.max(2,(ev==='shower'?16:12)-4*count('wall'))+2*S.tiles.filter(t=>t.mod&&t.mat==='kevlar').length)*mult():0}
 function nightPlan(){
   const m=mult(),ev=S.events[S.sol],b=B();
   const nonPower=S.tiles.filter(t=>t.mod&&!POWER_MODS.includes(t.mod)).length;
@@ -1083,7 +1093,7 @@ function nightPlan(){
   let dP=gen+count('fuelcell')*10-(6+2*nonPower)*m-4*m; // -4: hygiene (hot water for washing) if(ev==='cold')dP-=10*m; if(ev==='quake')dP-=8*m; if(ev==='gds'||ev==='cme')dP-=6*m;
   // water and oxygen drain 16 a night, food 12 (stored food lasts longer); habitat recycles air and water, greenhouse makes air and food, tank stores water
   let dW=-16*m+count('hab')*15+count('tank')*12+Math.min(1,count('recycler'))*12-count('ogs')*3+count('fuelcell')*4, dO=-16*m+count('hab')*15+count('green')*6+count('ogs')*14+count('scrubber')*10+count('algae')*6, dF=-12*m+count('green')*6+count('pantry')*8+count('algae')*6;
-  if(ev==='micro'||ev==='shower')dO-=3*(Math.max(2,(ev==='shower'?16:12)-4*count('wall'))+2*S.tiles.filter(t=>t.mod&&t.mat==='kevlar').length)*m; // hull leaks
+  dO-=hullLeak(ev); // hull leaks
   if(ev==='devil')dO-=6*m; // grit clogs the air filters
   const sh=shield()+(T(S.ax,S.ay).t==='lavatube'?8:0),safe=isSafe(S.ax,S.ay);
   let dR=safe?4+sh/2:-b.nightOut*m;
@@ -1133,7 +1143,7 @@ function actionsHere(){
   if(poi==='outcrop')A('Space walk discovery',3,0,'spacewalk',!c.done,'Already explored',()=>{c.done=true;S.rad=clamp(S.rad-5*mult());award('spacewalk');addLog('Climbed the outcrop and found layered rock. -5 radiation shield.','sci')},'-5 radiation shield');
   if(poi==='river')A('Search for signs of past life',3,0,'life',!c.done,'Already searched',()=>{c.done=true;award('life');addLog('Found rock patterns that tiny ancient microbes may have made!','sci',FACTS.life)});
   if(c.t!=='rocket'&&!c.mod){
-    Object.entries(ACTIVITIES).forEach(([k,n])=>A(n,2,0,'activity',!S.acts[k],'Already done',()=>{S.acts[k]=1;award('activity');addLog(`${n}: ${k==='jump'?`you jumped about ${b==='moon'?6:2.6} times farther than on Earth!`:k==='golf'?'the ball flew out of sight.':'the rover handled the rocks well.'}`,'sci',k==='golf'?FACTS.golf:'')}));
+    Object.entries(ACTIVITIES).forEach(([k,n])=>A(n,2,0,'activity',!S.acts[k],'Already done',()=>{S.acts[k]=1;award('activity');if(k==='rover')setTimeout(()=>mgStart('rover'),400);addLog(`${n.replace(/ \(.*\)$/,'')}: ${k==='jump'?`you jumped about ${b==='moon'?6:2.6} times farther than on Earth!`:k==='golf'?'the ball flew out of sight.':'the rover handled the rocks well.'}`,'sci',k==='golf'?FACTS.golf:'')}));
   }
   // ---- more science (each teaches a real fact) ----
   const mars=b==='mars',acts=S.acts,fx2=(k,msg,fact)=>{award(k);addLog(msg,'sci',fact)};
@@ -1240,7 +1250,7 @@ function build(x,y){
 // ---------- sol cycle ----------
 function endSol(){
   if(S.over)return;
-  const p=nightPlan(),ev=S.events[S.sol],evn=B().events[ev];
+  const p=nightPlan(),ev=S.events[S.sol],evn=B().events[ev],leak=Math.round(hullLeak(ev));
   S.power=clampP(S.power+p.dP);addLS(p.dW,p.dO,p.dF);if(p.empty.length&&!S.firstOut)S.firstOut=p.empty[0];S.rad=clamp(S.rad+p.dR);
   walkTarget=null;busyUntil=0;buildSel=null;
   addLog(`Night of sol ${S.sol}: ${evn[0]}. ${fx('Power',p.dP)}, ${lsFx(p.dW,p.dO,p.dF)}, ${fx('radiation shield',p.dR)}.`,ev==='clear'?'':'bad');
@@ -1252,6 +1262,8 @@ function endSol(){
   if(S.sol>=7){finish(true);return}
   S.sol++;S.timeLeft=S.solLen;S.today={};S.waiting=true;
   if(S.sol===4){S.crates+=4;S.cratesStart+=4;addLog('Supply drop! A cargo lander brought 4 more crates.','good','Cargo ships like SpaceX Dragon and Northrop Grumman Cygnus bring food, water, parts and experiments to the ISS several times a year.')}
+  S.mgOffers=[];if(leak>0)S.mgOffers.push({k:'leak',lost:leak});if(S.sol===4)S.mgOffers.push({k:'land'});
+  if(['dust','devil','gds'].includes(S.events[S.sol])&&count('solar')>0)S.mgOffers.push({k:'sun'});
   const ne=evText(S.sol);
   if(S.events[S.sol]!=='clear')addLog(`Morning alert, sol ${S.sol}: ${ne[0]}. ${ne[1]}`,'bad');else addLog(`Sol ${S.sol} begins. ${ne[0]}.`);
   save();render();
@@ -1388,15 +1400,16 @@ function showBriefing(title,body,btn){
   $('#overlayCard').innerHTML=`<p class="label">${B().name} · sol ${S.sol} of 7</p><h2 style="font-size:1.8rem">${title}</h2>${body}
     <p style="margin:0"><b>Real space weather today.</b> ${esc(realDayText(S.sol))}</p>
     <p style="margin:0;color:var(--muted)">You have ${S.solLen%60?Math.round(S.solLen)+' seconds':(S.solLen/60)+' minutes'} of daylight. The day ends on its own when the timer hits zero.</p>
+    <div id="mgOffers">${mgOffersHtml()}</div>
     <div><button class="btn primary" id="briefGo">${btn}</button></div>`;
   $('#overlay').hidden=false;
-  $('#briefGo').onclick=()=>{$('#overlay').hidden=true;S.waiting=false;paused=false;save();render()};
-  $('#briefGo').focus();
+  $('#briefGo').onclick=()=>{$('#overlay').hidden=true;S.waiting=false;paused=false;S.mgOffers=[];save();render()};
+  mgWireOffers();($('.mgOfferBtn')||$('#briefGo')).focus();
 }
 let lastTick=now(),saveAcc=0;
 setInterval(()=>{
   const t=now(),dt=(t-lastTick)/1000;lastTick=t;
-  if(!S||S.over||S.waiting||paused||$('#game').hidden||document.hidden)return;
+  if(!S||S.over||S.waiting||paused||MG.on||$('#game').hidden||document.hidden)return;
   S.timeLeft-=dt;
   if(S.timeLeft<=0){S.timeLeft=0;endSol();return}
   const busy=isBusy();
@@ -1453,19 +1466,147 @@ function dataTables(){
    +T('Power (fuel) costs and sources',['What','Power'],pw)
    +T('Modules and the NASA systems they are based on',['Module','Crates','What it does','Real NASA basis'],mods)
    +T('Game modes: starting meters and science targets',['Mode','Crates','Start power (of 150)','Start water / oxygen / food','Start radiation shield','Day length','Storm strength','Mars target','Moon target','Required modules'],modes)
-   +'<small>A cargo lander also brings +4 crates on the morning of sol 4.</small>';
+   +'<small>A cargo lander also brings +4 crates on the morning of sol 4 (6 if you fly a perfect landing in the mini-game, 2 if you crash it).</small>';
 }
 $('#dataTables').innerHTML=dataTables();
 $('#scoreTable tbody').innerHTML=Object.entries(SCI).sort((a,b)=>a[1][1]-b[1][1]).map(([k,[n,p]])=>{const t=tierOf(k);return `<tr><td>${n}</td><td><span class="tier ${t}" style="margin:0">${TIERS[t].name}</span></td><td class="num">${k==='survival'?'automatic':secs(TIERS[t].h)+' s · '+TIERS[t].pw+' ⚡'}</td><td class="pts">+${p}</td></tr>`}).join('');
-document.addEventListener('keydown',e=>{if(!$('#askBox').hidden||e.target.tagName==='INPUT')return;if($('#game').hidden||!S||S.over||S.waiting||paused)return;
+document.addEventListener('keydown',e=>{if(MG.on||!$('#askBox').hidden||e.target.tagName==='INPUT')return;if($('#game').hidden||!S||S.over||S.waiting||paused)return;
   const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];
   if(e.key==='Escape'&&buildSel){buildSel=null;render();return}
   if(d){e.preventDefault();const nx=S.ax+d[0],ny=S.ay+d[1];if(nx>=0&&ny>=0&&nx<W&&ny<H)moveTo(nx,ny)}});
+// ---------- Joystick mini-games ----------
+// Short hand-control challenges, like the stick controls astronauts use to fly landers and drive rovers.
+// They work with the ESP32 joystick (MOVE U/D/L/R + BTN J) or the keyboard (arrows or WASD + Space/Enter).
+// The sol timer is stopped while a mini-game is open.
+const MG={on:null,keys:{},joy:null};
+const MG_W=480,MG_H=300;
+const mgHit=(ax,ay,bx,by,r)=>(ax-bx)**2+(ay-by)**2<r*r;
+function mgDir(){let dx=0,dy=0;const k=MG.keys;
+  if(k.ArrowLeft||k.a)dx--;if(k.ArrowRight||k.d)dx++;if(k.ArrowUp||k.w)dy--;if(k.ArrowDown||k.s)dy++;
+  const j=MG.joy;if(j&&now()-j.t<260){dx+=j.d[0];dy+=j.d[1]} // the board repeats a held direction every 200 ms
+  return[Math.sign(dx),Math.sign(dy)]}
+const MGAMES={
+  rover:{title:'🚙 Rover dash',secs:20,
+    how:'Drive the rover to the green flag. Rocks bounce you back and cost 2 seconds.',
+    why:'NASA tested lunar and Mars rovers with hand controllers. Apollo 15 astronauts steered the Lunar Roving Vehicle with a single T-shaped stick.',
+    init(g){g.x=34;g.y=MG_H/2;g.fx=MG_W-40;g.fy=40+Math.random()*(MG_H-80);g.rocks=[];g.hits=0;
+      for(let i=0,t=0;i<13&&t<500;t++){const r=12+Math.random()*12,x=90+Math.random()*(MG_W-170),y=r+Math.random()*(MG_H-2*r);
+        if(mgHit(x,y,g.fx,g.fy,r+40)||g.rocks.some(o=>mgHit(x,y,o.x,o.y,o.r+r+26)))continue;g.rocks.push({x,y,r});i++}},
+    update(g,dt,[dx,dy]){const sp=120,nx=Math.max(12,Math.min(MG_W-12,g.x+dx*sp*dt)),ny=Math.max(12,Math.min(MG_H-12,g.y+dy*sp*dt));
+      const rock=g.rocks.find(o=>mgHit(nx,ny,o.x,o.y,o.r+11));
+      if(rock&&now()>(g.bump||0)){g.hits++;g.left-=2;g.bump=now()+500;const a=Math.atan2(g.y-rock.y,g.x-rock.x);g.x=rock.x+Math.cos(a)*(rock.r+24);g.y=rock.y+Math.sin(a)*(rock.r+24)}
+      else if(!rock){g.x=nx;g.y=ny}
+      if(mgHit(g.x,g.y,g.fx,g.fy,22))g.win=true;
+      return g.win},
+    draw(c,g){c.fillStyle=S.body==='mars'?'#8a4527':'#5d626b';c.fillRect(0,0,MG_W,MG_H);
+      g.rocks.forEach(o=>{c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(o.x+4,o.y+5,o.r,o.r*.8,0,0,7);c.fill();c.fillStyle=S.body==='mars'?'#5a2a17':'#3b3f46';c.beginPath();c.arc(o.x,o.y,o.r,0,7);c.fill()});
+      c.fillStyle='#6ad99a';c.fillRect(g.fx-2,g.fy-22,4,26);c.beginPath();c.moveTo(g.fx+2,g.fy-22);c.lineTo(g.fx+20,g.fy-15);c.lineTo(g.fx+2,g.fy-8);c.fill();
+      c.globalAlpha=now()<(g.bump||0)?.4:1;c.font='26px serif';c.textAlign='center';c.textBaseline='middle';c.save();c.translate(g.x,g.y);c.scale(-1,1);c.fillText('🚙',0,0);c.restore();c.globalAlpha=1},
+    status:g=>`Rock hits: ${g.hits}`,
+    result(g){if(!g.win)return{text:'Time ran out before the rover reached the flag. Try the drive again tomorrow on another tile!',ok:false};
+      const pts=award('roverDash');const tgt=S.tiles.map((t,i)=>({t,i})).filter(o=>!o.t.seen&&o.t.t!=='plain').sort((a,b)=>cheb(a.i%W,(a.i/W)|0,S.ax,S.ay)-cheb(b.i%W,(b.i/W)|0,S.ax,S.ay))[0];
+      let extra='';if(tgt){reveal(tgt.i%W,(tgt.i/W)|0,1);extra=' The rover\'s cameras spotted a new place to explore. Look for it on the map!'}
+      addLog(`Rover dash: reached the flag with ${Math.ceil(g.left)} s to spare.${extra}`,'sci',MGAMES.rover.why);
+      return{text:`You made it with ${Math.ceil(g.left)} seconds to spare! +${pts} science.${extra}`,ok:true}}},
+  leak:{title:'🔧 Leak hunt',secs:20,
+    how:'Last night\'s space rocks punched leaks in the hull. Sweep the scanner around: the ring glows when a leak is close. Click the stick (or Space) to patch it.',
+    why:'In 2018 the ISS crew tracked a tiny air leak to a 2 mm hole in a Soyuz spacecraft, then sealed it with epoxy and gauze. Station crews still hunt leaks with ultrasonic detectors.',
+    init(g){g.x=MG_W/2;g.y=MG_H/2;g.n=5;g.leaks=[];g.fixed=0;
+      for(let t=0;g.leaks.length<g.n&&t<500;t++){const x=30+Math.random()*(MG_W-60),y=30+Math.random()*(MG_H-60);if(!g.leaks.some(o=>mgHit(x,y,o.x,o.y,70)))g.leaks.push({x,y,fixed:false})}},
+    near(g){let best=null,bd=1e9;g.leaks.forEach(o=>{if(o.fixed)return;const d=Math.hypot(o.x-g.x,o.y-g.y);if(d<bd){bd=d;best=o}});return[best,bd]},
+    update(g,dt,[dx,dy]){const sp=150;g.x=Math.max(10,Math.min(MG_W-10,g.x+dx*sp*dt));g.y=Math.max(10,Math.min(MG_H-10,g.y+dy*sp*dt));return g.fixed===g.n},
+    press(g){const [o,d]=this.near(g);if(o&&d<26){o.fixed=true;g.fixed++;g.flash=now()+300}else g.miss=now()+300},
+    draw(c,g){c.fillStyle='#4a5168';c.fillRect(0,0,MG_W,MG_H);c.strokeStyle='#363c50';c.lineWidth=2;
+      for(let x=0;x<=MG_W;x+=80)for(let y=0;y<=MG_H;y+=60){c.strokeRect(x,y,80,60);c.fillStyle='#2d3243';c.beginPath();c.arc(x+6,y+6,2,0,7);c.fill()}
+      const [o,d]=this.near(g),t=now()/1000;
+      g.leaks.forEach(l=>{if(l.fixed){c.fillStyle='#f2b33d';c.fillRect(l.x-9,l.y-9,18,18);return}
+        const dd=Math.hypot(l.x-g.x,l.y-g.y);if(dd<70){c.globalAlpha=Math.min(1,(70-dd)/40);c.fillStyle='#e8f4ff';
+          for(let k=0;k<5;k++){const a=t*6+k*1.3,r=4+((t*20+k*5)%14);c.beginPath();c.arc(l.x+Math.cos(a)*r,l.y+Math.sin(a)*r,2,0,7);c.fill()}c.globalAlpha=1}});
+      const heat=o?Math.max(0,1-d/120):0;c.lineWidth=3;c.strokeStyle=now()<(g.miss||0)?'#ff7466':`rgb(${80+175*heat},${200+55*heat},${255-200*heat})`;
+      c.beginPath();c.arc(g.x,g.y,26,0,7);c.stroke();c.beginPath();c.moveTo(g.x-8,g.y);c.lineTo(g.x+8,g.y);c.moveTo(g.x,g.y-8);c.lineTo(g.x,g.y+8);c.stroke()},
+    status(g){const [,d]=this.near(g);const bars=d<26?5:d<50?4:d<80?3:d<120?2:1;return `Patched ${g.fixed}/${g.n} · signal ${'▮'.repeat(g.fixed<g.n?bars:0)}${'▯'.repeat(g.fixed<g.n?5-bars:5)}`},
+    result(g){const lost=g.offer.lost||0,back=Math.round(lost*0.75*g.fixed/g.n);if(back)addLS(0,back,0);
+      addLog(`Leak hunt: patched ${g.fixed} of ${g.n} hull leaks. ${back?`+${back} oxygen saved.`:''}`,g.fixed?'good':'bad',MGAMES.leak.why);
+      return{text:`You patched ${g.fixed} of ${g.n} leaks. ${back?`That saved ${fx('oxygen',back)}.`:'No oxygen saved.'} (Patching recovers up to 3/4 of the air the leaks cost.)`,ok:g.fixed>0}}},
+  land:{title:'🛬 Supply drop landing',secs:25,
+    how:'Fly the cargo lander onto the pad. Hold UP to fire the braking engine, LEFT and RIGHT to slide. Touch down slowly!',
+    why:'Neil Armstrong flew Apollo 11\'s lander by hand for the last minutes because the computer was heading for a boulder field. He landed with about 25 seconds of fuel left.',
+    init(g){g.x=60+Math.random()*(MG_W-120);g.y=30;g.vx=(Math.random()-.5)*30;g.vy=15;g.fuel=100;g.px=80+Math.random()*(MG_W-160);g.grav=S.body==='moon'?24:48},
+    update(g,dt,[dx,dy]){const burn=g.fuel>0;g.thr=burn&&dy<0;
+      g.vy+=(g.grav-(g.thr?g.grav*2.2:0))*dt;g.vx+=(burn?dx*40:0)*dt;if(g.thr)g.fuel-=14*dt;if(burn&&dx)g.fuel-=5*dt;g.fuel=Math.max(0,g.fuel);
+      g.x=Math.max(14,Math.min(MG_W-14,g.x+g.vx*dt));g.y=Math.max(10,g.y+g.vy*dt);
+      if(g.y>=MG_H-34){g.y=MG_H-34;g.landed={speed:g.vy,onPad:Math.abs(g.x-g.px)<40};return true}return false},
+    draw(c,g){c.fillStyle='#05060c';c.fillRect(0,0,MG_W,MG_H);c.fillStyle='#fff';for(let i=0;i<40;i++){c.fillRect((i*97)%MG_W,(i*53)%(MG_H-60),1,1)}
+      c.fillStyle=S.body==='mars'?'#8a4527':'#5d626b';c.fillRect(0,MG_H-24,MG_W,24);c.fillStyle='#f2b33d';c.fillRect(g.px-40,MG_H-26,80,4);
+      if(g.thr){c.fillStyle='#ffb347';c.beginPath();c.moveTo(g.x-6,g.y+12);c.lineTo(g.x+6,g.y+12);c.lineTo(g.x,g.y+26+Math.random()*8);c.fill()}
+      c.fillStyle='#d8dbe4';c.fillRect(g.x-10,g.y-10,20,16);c.strokeStyle='#d8dbe4';c.lineWidth=2;c.beginPath();c.moveTo(g.x-8,g.y+6);c.lineTo(g.x-13,g.y+12);c.moveTo(g.x+8,g.y+6);c.lineTo(g.x+13,g.y+12);c.stroke()},
+    status:g=>`Speed ${Math.max(0,Math.round(g.vy))} · fuel ${Math.round(g.fuel)}%${g.vy>40?' · too fast!':''}`,
+    result(g){const L=g.landed;let d=0,text;
+      if(!L){text='The lander was still hovering, so the autopilot landed it. You get the normal 4 crates.'}
+      else if(L.onPad&&L.speed<=40){d=2;text=`Perfect landing at speed ${Math.round(L.speed)}! Nothing broke, and the crew found 2 bonus crates packed inside: 6 crates in total.`}
+      else if(L.onPad&&L.speed<=75){text=`A bumpy landing at speed ${Math.round(L.speed)}, but the cargo is fine. You get the normal 4 crates.`}
+      else{d=-2;text=`${L.onPad?'Too fast':'You missed the pad'}! Two crates broke on impact, so only 2 of the 4 crates are usable.`}
+      if(d){S.crates+=d;S.cratesStart+=d}addLog(`Supply drop landing: ${text}`,d>0?'good':d<0?'bad':'',MGAMES.land.why);return{text,ok:d>=0}}},
+  sun:{title:'☀️ Sun tracker',secs:15,
+    how:'Dust is blocking the Sun. Keep the solar panel\'s aim ring on the faint, drifting Sun. The longer you stay on it, the more power you win back.',
+    why:'Real solar arrays turn to follow the Sun. On the ISS, motors called gimbals rotate the giant wings so they always face it.',
+    init(g){g.x=MG_W/2;g.y=MG_H/2;g.ph=Math.random()*6;this.update(g,0,[0,0]);g.on=0},
+    update(g,dt,[dx,dy]){const t=(g.secs-g.left)+g.ph,sp=140;
+      g.sx=MG_W/2+Math.sin(t*.35)*160+Math.sin(t*1.1)*22;g.sy=MG_H/2+Math.sin(t*.5+1)*85+Math.cos(t*1.4)*14; // the Sun drifts at about half the aim speed
+      g.x=Math.max(10,Math.min(MG_W-10,g.x+dx*sp*dt));g.y=Math.max(10,Math.min(MG_H-10,g.y+dy*sp*dt));
+      g.lock=mgHit(g.x,g.y,g.sx,g.sy,28);if(g.lock)g.on+=dt;return false},
+    draw(c,g){const t=now()/1000;c.fillStyle='#9a6a45';c.fillRect(0,0,MG_W,MG_H);
+      const gr=c.createRadialGradient(g.sx,g.sy,2,g.sx,g.sy,36);gr.addColorStop(0,'rgba(255,240,200,.95)');gr.addColorStop(1,'rgba(255,220,160,0)');c.fillStyle=gr;c.beginPath();c.arc(g.sx,g.sy,36,0,7);c.fill();
+      c.fillStyle='rgba(120,70,40,.45)';for(let i=0;i<7;i++){c.beginPath();c.arc(((i*90+t*25*(1+i%3))%(MG_W+120))-60,40+i*38,46,0,7);c.fill()}
+      c.lineWidth=3;c.strokeStyle=g.lock?'#6ad99a':'#f7f4ec';c.beginPath();c.arc(g.x,g.y,22,0,7);c.stroke()},
+    status:g=>`On target: ${g.on.toFixed(1)} s of ${g.secs}${g.lock?' · locked ✓':''}`,
+    result(g){const f={dust:0.3,devil:0.7,gds:0.2}[S.events[S.sol]]??1,frac=Math.min(1,g.on/g.secs),lost=count('solar')*B().solar*(1-f),back=Math.round(lost*0.75*frac);
+      if(back)S.power=clampP(S.power+back);addLog(`Sun tracker: kept the panels on the Sun for ${Math.round(frac*100)}% of the time. ${back?`+${back} power.`:''}`,back?'good':'',MGAMES.sun.why);
+      return{text:`You stayed on the Sun ${Math.round(frac*100)}% of the time. ${back?`That won back ${fx('power',back)}.`:'No power won back.'} (Tracking recovers up to 3/4 of what the dust took.)`,ok:back>0}}}
+};
+function mgStart(kind,offer,onDone){const def=MGAMES[kind],g={def,secs:def.secs,left:def.secs,phase:'ready',offer:offer||{},onDone};def.init(g);MG.on=g;MG.keys={};MG.joy=null;
+  $('#mgCard').innerHTML=`<p class="label">Hand-control challenge · joystick or keyboard</p><h2 style="font-size:1.6rem">${def.title}</h2><p style="margin:0">${def.how}</p>
+    <canvas id="mgCanvas" width="${MG_W}" height="${MG_H}"></canvas>
+    <div class="mg-bar"><span id="mgStatus"></span><span id="mgTime"></span></div>
+    <p id="mgMsg" style="margin:0"><b>Click the stick or press Space to start.</b> <span style="color:var(--muted)">Move with the stick, the arrow keys or WASD.</span></p>
+    <div><button class="btn primary" id="mgGo">Start</button></div>`;
+  $('#mg').hidden=false;$('#mgGo').onclick=mgPress;$('#mgGo').focus();mgDraw();
+}
+function mgDraw(){const g=MG.on;if(!g)return;const c=$('#mgCanvas').getContext('2d');g.def.draw(c,g);
+  $('#mgStatus').textContent=g.def.status(g);$('#mgTime').textContent=`⏱ ${Math.max(0,Math.ceil(g.left))} s`}
+function mgPress(){const g=MG.on;if(!g)return;
+  if(g.phase==='ready'){g.phase='play';g.last=now();$('#mgMsg').innerHTML='<span style="color:var(--muted)">Go!</span>';$('#mgGo').hidden=true;requestAnimationFrame(mgLoop);return}
+  if(g.phase==='play'){if(g.def.press)g.def.press(g);return}
+  if(g.phase==='done'){$('#mg').hidden=true;MG.on=null;g.onDone&&g.onDone(g.res)}}
+function mgLoop(){const g=MG.on;if(!g||g.phase!=='play')return;const t=now(),dt=Math.min(.05,(t-g.last)/1000);g.last=t;g.left-=dt;
+  const fin=g.def.update(g,dt,mgDir());mgDraw();
+  if(fin||g.left<=0){g.phase='done';g.res=g.def.result(g);save();render();
+    $('#mgMsg').innerHTML=`<b style="color:var(${g.res.ok?'--good':'--bad'})">${g.res.ok?'Nice flying!':'Not this time.'}</b> ${g.res.text}<br><small>${g.def.why}</small>`;
+    $('#mgGo').textContent='Continue';$('#mgGo').hidden=false;$('#mgGo').focus();return}
+  requestAnimationFrame(mgLoop)}
+function mgJoy(line){const m=/^MOVE ([UDLR])$/.exec(line);
+  if(m)MG.joy={d:{U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]}[m[1]],t:now()};else if(line==='BTN J')mgPress()}
+document.addEventListener('keydown',e=>{if(!MG.on)return;const k=e.key.length===1?e.key.toLowerCase():e.key;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(k)){e.preventDefault();MG.keys[k]=true}
+  else if(k===' '||k==='Enter'){e.preventDefault();if(!e.repeat)mgPress()}},true);
+document.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;delete MG.keys[k]},true);
+// Morning offers: shown on the sol briefing after a matching event. Playing is optional.
+const MG_OFFER={leak:'Patch the hull leaks',land:'Fly the supply lander in',sun:'Track the Sun through the dust'};
+function mgOffersHtml(){const L=(S.mgOffers||[]);if(!L.length)return'';
+  return `<div class="mg-offer"><b>🎮 Hand-control challenge${L.length>1?'s':''} (optional)</b>${L.map((o,i)=>o.res?`<span>${MGAMES[o.k].title}: ${o.res.text}</span>`:`<span><button class="btn mgOfferBtn" data-i="${i}">${MGAMES[o.k].title}</button> ${MG_OFFER[o.k]}${o.k==='land'?' (or skip it and the autopilot lands it).':'.'}</span>`).join('')}</div>`}
+function mgWireOffers(){document.querySelectorAll('.mgOfferBtn').forEach(b=>b.onclick=()=>{const o=S.mgOffers[+b.dataset.i];
+  mgStart(o.k,o,res=>{o.res=res;save();$('#mgOffers').innerHTML=mgOffersHtml();mgWireOffers();const n=$('.mgOfferBtn');(n||$('#briefGo')).focus()})})}
+// ESP32 stick on an overlay card: push to move between buttons, click to press the highlighted one.
+function joyOverlay(line){const bs=[...$('#overlayCard').querySelectorAll('button:not([hidden])')];if(!bs.length)return false;
+  const i=bs.indexOf(document.activeElement),m=/^MOVE ([UDLR])$/.exec(line);
+  if(m){const s=m[1]==='L'||m[1]==='U'?-1:1;bs[i<0?0:(i+s+bs.length)%bs.length].focus();return true}
+  if(line==='BTN J'){(i>=0?bs[i]:bs.find(b=>b.id==='briefGo')||bs[0]).click();return true}return false}
 // ESP32 joystick over USB (Web Serial). The board sends lines: "MOVE U|D|L|R" and "BTN J".
 const JOY={port:null,reader:null};
 function joyReady(){return $('#askBox').hidden&&!$('#game').hidden&&S&&!S.over&&!S.waiting&&!paused}
 function joyLine(line){line=line.trim();if(!line)return;
-  if(line==='BTN J'&&S&&S.waiting&&!$('#overlay').hidden){const g=$('#briefGo');if(g){g.click();return}}
+  if(MG.on){mgJoy(line);return}
+  if(S&&!$('#overlay').hidden&&$('#askBox').hidden&&joyOverlay(line))return;
   if(!joyReady())return;
   const m=/^MOVE ([UDLR])$/.exec(line);
   if(m){const d={U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]}[m[1]],nx=S.ax+d[0],ny=S.ay+d[1];if(nx>=0&&ny>=0&&nx<W&&ny<H)moveTo(nx,ny);return}
@@ -1486,7 +1627,7 @@ async function joyConnect(){
 }
 $('#joyBtn').onclick=joyConnect;
 if(!('serial' in navigator))$('#joyStatus').textContent='needs Chrome or Edge';
-window.__outpost={joyLine,get S(){return S},get WX(){return WX},get WXP(){return WX_PREV},wxCompare,dataTables,realDayText,askKB,KB,earthHints,callEarth,askQuestion,setMat:k=>{matSel=k},rebuild,shield,skipBusy:()=>{busyUntil=0},walkTo1:(x,y)=>{walkTarget=[x,y];stepToward()},stepToward,isBusy,newGame,moveTo,endSol,actionsHere,doAction,build:(k,x,y)=>{buildSel=k;build(x,y)},nightPlan,render};
+window.__outpost={joyLine,mgStart,MG,endSol,get S(){return S},get WX(){return WX},get WXP(){return WX_PREV},wxCompare,dataTables,realDayText,askKB,KB,earthHints,callEarth,askQuestion,setMat:k=>{matSel=k},rebuild,shield,skipBusy:()=>{busyUntil=0},walkTo1:(x,y)=>{walkTarget=[x,y];stepToward()},stepToward,isBusy,newGame,moveTo,endSol,actionsHere,doAction,build:(k,x,y)=>{buildSel=k;build(x,y)},nightPlan,render};
 try{$('#nasaKey').value=localStorage.getItem(KEYK)||''}catch(e){}
 $('#nasaSave').onclick=()=>{const v=$('#nasaKey').value.trim();try{v?localStorage.setItem(KEYK,v):localStorage.removeItem(KEYK)}catch(e){}NASA.live={};renderNasaStatus();loadNasa(true)};
 $('#nasaClear').onclick=()=>{$('#nasaKey').value='';try{localStorage.removeItem(KEYK);localStorage.removeItem(CACHEK)}catch(e){}NASA.data={flares:null,neo:null,photos:null,apod:null};NASA.live={};renderNasaStatus()};
