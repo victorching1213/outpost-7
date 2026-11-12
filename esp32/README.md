@@ -26,4 +26,12 @@ Open `index.html` in Chrome or Edge, start a mission, click **🎮 Connect joyst
 - Push the stick: the astronaut walks one tile (holding repeats every 200 ms).
 - Click the stick: starts the sol from the briefing, or does the highest-scoring task available on your tile.
 
+**Hand-control challenges** (the timer stops while you play; the arrow keys or WASD plus Space work too)
+- **🚙 Rover dash:** do the *Rover test drive* activity on any empty tile, then steer to the flag in 20 s. +15 science and the rover spots a new place on the map.
+- **🔧 Leak hunt:** the morning after a micrometeorite or meteor shower (Moon). Sweep the scanner, click to patch. Saves up to 3/4 of the oxygen the leaks cost.
+- **🛬 Supply drop landing:** the morning of sol 4. Hold up to brake, left/right to slide. Perfect landing = 6 crates, crash = 2, skip = 4.
+- **☀️ Sun tracker:** the morning of a dust storm day (Mars), if you have a solar panel. Keep the ring on the Sun to win back up to 3/4 of the lost solar power.
+
+On a briefing card, push the stick to move between buttons and click to press the highlighted one.
+
 **Protocol (one line each, 115200 baud):** `MOVE U`, `MOVE D`, `MOVE L`, `MOVE R`, `BTN J`.
