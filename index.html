@@ -1475,7 +1475,7 @@ async function joyConnect(){
   if(!('serial' in navigator)){joySet(false,'needs Chrome or Edge');return}
   if(JOY.port){try{await JOY.reader?.cancel()}catch(e){}return}
   try{JOY.port=await navigator.serial.requestPort();await JOY.port.open({baudRate:115200})}
-  catch(e){JOY.port=null;joySet(false,e.name==='NotFoundError'?'not connected':'port busy: close Serial Monitor');return}
+  catch(e){JOY.port=null;joySet(false,e.name==='NotFoundError'?'not connected':e.name==='SecurityError'?'blocked here: open index.html in Chrome':'port busy: close Serial Monitor');return}
   joySet(true,'connected');let buf='';
   const dec=new TextDecoderStream(),closed=JOY.port.readable.pipeTo(dec.writable).catch(()=>{});
   JOY.reader=dec.readable.getReader();
