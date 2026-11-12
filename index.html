@@ -475,7 +475,7 @@ const OFFLINE={
   neo:{count:null,closest:{name:'99942 Apophis',km:31600,date:'2029-04-13',hazardous:true}},
   photos:[],apod:[]
 };
-const NASA={data:{flares:null,neo:null,photos:null,apod:null},live:{},loading:false,
+const NASA={data:{flares:null,neo:null,photos:null,apod:null,wkFlr:null,wkGst:null,wkCme:null},live:{},loading:false,
   key(){try{return localStorage.getItem(KEYK)||'DEMO_KEY'}catch(e){return'DEMO_KEY'}},
   get flares(){return this.data.flares&&this.data.flares.length?this.data.flares:OFFLINE.flares},
   get neo(){return this.data.neo||OFFLINE.neo},
@@ -490,6 +490,9 @@ async function nasaGet(path){
     if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(t)}
 }
 const PARSE={
+  wkFlr:j=>({range:null,list:(Array.isArray(j)?j:[]).filter(f=>f.classType&&(f.peakTime||f.beginTime)).map(f=>[String(f.peakTime||f.beginTime).slice(0,16),String(f.classType)])}),
+  wkGst:j=>{const kp={};(Array.isArray(j)?j:[]).forEach(g=>(g.allKpIndex||[]).forEach(k=>{const d=String(k.observedTime||'').slice(0,10),v=Math.round(+k.kpIndex);if(d.length===10&&isFinite(v))kp[d]=Math.max(kp[d]||0,v)}));return kp},
+  wkCme:j=>(Array.isArray(j)?j:[]).length,
   flares:j=>(Array.isArray(j)?j:[]).filter(f=>f.classType).map(f=>({cls:f.classType,date:(f.peakTime||f.beginTime||'').slice(0,10)})).reverse(),
   neo:j=>{const all=Object.values(j.near_earth_objects||{}).flat();if(!all.length)return null;
     const c=all.map(o=>({name:o.name,km:Math.round(+o.close_approach_data?.[0]?.miss_distance?.kilometers||Infinity),date:o.close_approach_data?.[0]?.close_approach_date,hazardous:o.is_potentially_hazardous_asteroid})).sort((a,b)=>a.km-b.km)[0];
@@ -500,7 +503,9 @@ const PARSE={
 async function loadNasa(force=false){
   if(NASA.loading)return;NASA.loading=true;
   const today=new Date(),past=new Date(Date.now()-30*864e5);
-  const Q={flares:`DONKI/FLR?startDate=${iso(past)}&endDate=${iso(today)}`,neo:`neo/rest/v1/feed?start_date=${iso(today)}&end_date=${iso(today)}`,
+  const wk=new Date(Date.now()-7*864e5);
+  const Q={wkFlr:`DONKI/FLR?startDate=${iso(wk)}&endDate=${iso(today)}`,wkGst:`DONKI/GST?startDate=${iso(wk)}&endDate=${iso(today)}`,wkCme:`DONKI/CME?startDate=${iso(wk)}&endDate=${iso(today)}`,
+    flares:`DONKI/FLR?startDate=${iso(past)}&endDate=${iso(today)}`,neo:`neo/rest/v1/feed?start_date=${iso(today)}&end_date=${iso(today)}`,
     photos:'mars-photos/api/v1/rovers/curiosity/latest_photos',apod:'planetary/apod?count=8'};
   const cache=readCache();
   await Promise.all(Object.entries(Q).map(async([k,q])=>{
@@ -509,10 +514,10 @@ async function loadNasa(force=false){
     try{const v=PARSE[k](await nasaGet(q));NASA.data[k]=v;NASA.live[k]='live';cache[k]={t:Date.now(),v}}
     catch(e){if(c){NASA.data[k]=c.v;NASA.live[k]='cached'}else NASA.live[k]='offline'}
   }));
-  writeCache(cache);NASA.loading=false;renderNasaStatus();if(S&&!$('#game').hidden)render();
+  writeCache(cache);NASA.loading=false;applyDonki();renderNasaStatus();if(S&&!$('#game').hidden)render();
 }
 function renderNasaStatus(){
-  const names={flares:'Solar flares',neo:'Asteroids',photos:'Mars photos',apod:'Space pictures'};
+  const names={wkFlr:'Space weather (DONKI)',flares:'Solar flares',neo:'Asteroids',photos:'Mars photos',apod:'Space pictures'};
   const html=Object.entries(names).map(([k,n])=>{const st=NASA.live[k]||(NASA.loading?'loading':'offline');
     return `<span class="chip ${st==='live'||st==='cached'?'live':'off'}">${n}: ${st==='offline'?'built-in':st}</span>`}).join('');
   $('#nasaStatus').innerHTML=html;const g=$('#gameNasa');if(g)g.innerHTML=html;
@@ -556,7 +561,7 @@ function realDay(sol){const d=addDays(WX.from,Math.max(1,Math.min(7,sol)));
 function realDayText(sol){const r=realDay(sol);
   return `${fmtD(r.d)}: ${r.n?`${r.n} solar flare${r.n>1?'s':''}, biggest ${r.big}`:'no solar flares'}${r.kp?`. Geomagnetic storm on Earth (Kp ${r.kp}, ${gScale(r.kp)}): auroras, and static on the radio link, so sending data takes 50% longer today`:'. No geomagnetic storm on Earth (Kp under 5)'}.`}
 function weekText(){const W=WX,pct=Math.round(Math.abs(W.sunMult-1)*100);
-  return `${fmtD(W.from)} to ${fmtD(W.to)}: ${W.flares.length} solar flares, biggest ${W.big||'none'}. ${W.storm?`${W.stormDays} geomagnetic storm day${W.stormDays>1?'s':''}, strongest Kp ${W.storm.kp} (${W.storm.g}) on ${fmtD(W.storm.t.slice(0,10))}`:`No geomagnetic storms (highest Kp ${W.maxKp})`}. Sun activity: ${W.level}, so radiation storms in this game are ${W.sunMult===1?'normal strength':`${pct}% ${W.sunMult<1?'weaker':'stronger'}`}.`}
+  return `${W.cmes!=null?`${W.cmes} coronal mass ejection${W.cmes===1?'':'s'} (CMEs) seen by NASA DONKI this week. `:''}${fmtD(W.from)} to ${fmtD(W.to)}: ${W.flares.length} solar flares, biggest ${W.big||'none'}. ${W.storm?`${W.stormDays} geomagnetic storm day${W.stormDays>1?'s':''}, strongest Kp ${W.storm.kp} (${W.storm.g}) on ${fmtD(W.storm.t.slice(0,10))}`:`No geomagnetic storms (highest Kp ${W.maxKp})`}. Sun activity: ${W.level}, so radiation storms in this game are ${W.sunMult===1?'normal strength':`${pct}% ${W.sunMult<1?'weaker':'stronger'}`}.`}
 // ---- weekly refresh + this week vs last week ----
 function wxCompare(prev,cur){if(!prev)return null;const P=wxDerive(wxNorm(prev)),C=cur,rows=[];
   const cmp=(name,a,b,fmt=x=>x,lowerBetter=true)=>{const d=b>a?1:b<a?-1:0;rows.push({name,txt:`${fmt(a)} → ${fmt(b)}`,res:d===0?'same':(d<0)===lowerBetter?'better':'worse'})};
@@ -564,13 +569,29 @@ function wxCompare(prev,cur){if(!prev)return null;const P=wxDerive(wxNorm(prev))
   cmp('Biggest flare',P.big?flareRank(P.big):0,C.big?flareRank(C.big):0,x=>x===flareRank(P.big||'')&&P.big?P.big:x===flareRank(C.big||'')&&C.big?C.big:'none');
   cmp('Strongest geomagnetic storm (Kp)',P.maxKp,C.maxKp);
   cmp('Geomagnetic storm days',P.stormDays,C.stormDays);
+  if(P.cmes!=null&&C.cmes!=null)cmp('Coronal mass ejections',P.cmes,C.cmes);
   cmp('Radiation storm strength in game',Math.round(P.sunMult*100),Math.round(C.sunMult*100),x=>x+'%');
   return{prev:P,rows}}
 function wxCompareHtml(c){if(!c)return '<small>This is the first weekly snapshot, so there is no last week to compare yet. After the next Monday snapshot you will see what got better and what got worse.</small>';
   const col={better:'var(--good)',worse:'var(--bad)',same:'var(--muted)'},ic={better:'▲ better',worse:'▼ worse',same:'= same'};
   return `<div style="display:grid;gap:4px"><b>This week vs last week (${fmtD(c.prev.from)} to ${fmtD(c.prev.to)})</b>${c.rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:10px"><span>${r.name}: ${r.txt}</span><span style="color:${col[r.res]};font-weight:700;white-space:nowrap">${ic[r.res]}</span></div>`).join('')}</div>`}
+// Live NASA DONKI (needs the api.nasa.gov key saved on the home screen; DEMO_KEY also works but is rate-limited).
+// Flares + geomagnetic storms from DONKI replace the Monday NOAA snapshot when they load. If the flare feed fails,
+// the snapshot stays. Live CME counts are added either way: 15 or more CMEs in a week makes radiation storms 10% stronger.
+const weekId=d=>{const t=Date.parse(d+'T00:00:00Z');const day=(new Date(t).getUTCDay()+6)%7;return new Date(t-day*864e5).toISOString().slice(0,10)}; // Monday of that week
+const okLive=k=>NASA.live[k]==='live'||NASA.live[k]==='cached';
+function applyDonki(){
+  const today=new Date(),to=iso(today),from=iso(new Date(Date.now()-7*864e5));
+  let base;
+  if(okLive('wkFlr')&&NASA.data.wkFlr){base={from,to,taken:to,flares:NASA.data.wkFlr.list,kpDays:okLive('wkGst')&&NASA.data.wkGst?NASA.data.wkGst:{},how:'donki'};
+    const snapNow=wxNorm(SPACEWX);WX_PREV=weekId(snapNow.to)!==weekId(to)?snapNow:(typeof SPACEWX_LAST!=='undefined'?wxNorm(SPACEWX_LAST):null)}
+  else base=Object.assign(wxNorm(SPACEWX),{how:'noaa'});
+  const W=wxDerive(base);
+  if(okLive('wkCme')&&NASA.data.wkCme!=null){W.cmes=NASA.data.wkCme;if(W.cmes>=15&&W.sunMult<1.25){W.sunMult=Math.round((W.sunMult+0.1)*100)/100;W.level+=', with a busy CME week'}}
+  WX=W;renderSpaceWx();
+}
 function renderSpaceWx(){const el=$('#spacewxNote');if(!el)return;
-  const how=`NOAA snapshot taken ${fmtD(WX.taken||WX.to)}, updated every Monday`;
+  const how=WX.how==='donki'?'Live from NASA DONKI, last 7 days':`NOAA snapshot taken ${fmtD(WX.taken||WX.to)}, updated every Monday`;
   el.innerHTML=`<b>Real space weather.</b> ${esc(how)}: ${esc(weekText())}<div style="margin-top:6px">${wxCompareHtml(wxCompare(WX_PREV,WX))}</div>`;}
 
 let buildOpen=false;
@@ -1364,7 +1385,7 @@ function render(){
   let fc=`<div class="fc"><span class="label">Today</span><span><b>${ev[0]}</b>. ${ev[1]}</span></div>`;
   if(S.sol<7){if(count('weather')){const ne=evText(S.sol+1);fc+=`<div class="fc"><span class="label">Tomorrow</span><span><b>${ne[0]}</b></span></div>`}
     else fc+=`<div class="fc"><span class="label">Tomorrow</span><span style="color:var(--muted)">Build a weather station to see it.</span></div>`}
-  fc+=`<div class="fc"><span class="label">Real Sun</span><span>${esc(realDayText(S.sol))} <small style="color:var(--muted)">(NOAA data)</small></span></div>`;
+  fc+=`<div class="fc"><span class="label">Real Sun</span><span>${esc(realDayText(S.sol))} <small style="color:var(--muted)">(${WX.how==='donki'?'NASA DONKI':'NOAA'} data)</small></span></div>`;
   $('#forecast').innerHTML=fc;
   const p=nightPlan();
   $('#tonight').innerHTML=`Tonight, if you sleep here: ${fx('power',p.dP)} · ${fx('water',p.dW)} · ${fx('oxygen',p.dO)} · ${fx('food',p.dF)} · ${fx('radiation shield',p.dR)}`;
