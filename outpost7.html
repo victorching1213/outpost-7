@@ -260,7 +260,7 @@ details.fold>summary{cursor:pointer;font-family:var(--display);font-weight:700;p
       <li>Pick a material for each module: <b>Aluminum</b> (standard), <b>3D-printed regolith</b> (made from local soil: fewer crates, slower, extra shielding), <b>Polyethylene + water</b> (strong radiation shield, but costs more crates and power) or <b>Kevlar inflatable</b> (light and fast, but weak). You can change a module's material later with <b>Change a module's material</b>. A small tag on each tile shows its material.</li>
       <li>Stuck or curious? Click <b>Ask Mission Control</b> and type a space question. Not sure what to do next? Press <b>📞 Call Earth</b> for hints about your outpost (3 calls each sol). The game pauses while you read.</li>
       <li>Storms hit most nights. Mars: dust storms, dust devils, great dust storms, deep cold and radiation storms. Moon: solar flares, coronal mass ejections, micrometeorites, meteor showers and moonquakes. A weather station shows tomorrow's storm.</li>
-      <li>Real space weather: each sol replays one real day from the latest weekly NOAA snapshot, taken every Monday. The home screen shows what got better and worse since last week. You'll see that day's solar flares, and on the geomagnetic storm day the radio link to Earth is slower.</li>
+      <li>Real space weather: each sol replays one real day from the latest NASA DONKI space weather timeline (November 8 to 14, 2026). Open the DONKI timeline under the forecast to see that day's solar flares, sun clouds (CMEs), particle storms and magnetic storms. The home screen shows what got better and worse since last week. You'll see that day's solar flares, and on the geomagnetic storm day the radio link to Earth is slower.</li>
       <li>Some modules are required to win, and the list grows with the mode. Cadet needs a habitat and power. Junior adds a comms dish, Commander adds a greenhouse, and Veteran adds a med bay. Every module uses crates and power (3 power per crate). Open the build menu whenever you are ready. Walking around never makes you build.</li>
       <li>Choose where to place things. Walls and water tanks only shield you if they touch the rocket or a habitat.</li>
       <li>Keep 3 meters up: <b style="color:var(--rad)">Radiation shield</b>, <b style="color:var(--life)">Life support</b> and <b style="color:var(--power)">Power</b>. Life support is made of three parts, 💧 water, 🫁 oxygen and 🍎 food, and the meter shows their average. Water and oxygen drop 16 a night, food drops 12. These match NASA's daily numbers for one astronaut: about 4 L of water (3 L to drink, 1 L to wash), 0.84 kg of oxygen and 1.8 kg of food. Growing plants and lab work use some water too. If one of them runs out, the crew is in crisis and the other two drain fast every night. The mission ends when the life support meter or the radiation shield hits zero. Power is your fuel: walking uses 1 power every 2 steps, and hot water for washing uses 4 every night. The power tank holds 150. If power runs out at night, water freezes and the air recycler stops, so water and oxygen drop fast.</li>
@@ -468,7 +468,7 @@ const OFFLINE={
   neo:{count:null,closest:{name:'99942 Apophis',km:31600,date:'2029-04-13',hazardous:true}},
   photos:[],apod:[]
 };
-const NASA={data:{flares:null,neo:null,photos:null,apod:null,wkFlr:null,wkGst:null,wkCme:null},live:{},loading:false,
+const NASA={data:{flares:null,neo:null,photos:null,apod:null,wkFlr:null,wkGst:null,wkKp3:null,wkCmes:null,wkEnlil:null,wkSep:null,wkIps:null,wkHss:null,wkMpc:null,wkRbe:null},live:{},loading:false,
   key(){try{return localStorage.getItem(KEYK)||'DEMO_KEY'}catch(e){return'DEMO_KEY'}},
   get flares(){return this.data.flares&&this.data.flares.length?this.data.flares:OFFLINE.flares},
   get neo(){return this.data.neo||OFFLINE.neo},
@@ -485,7 +485,15 @@ async function nasaGet(path){
 const PARSE={
   wkFlr:j=>({range:null,list:(Array.isArray(j)?j:[]).filter(f=>f.classType&&(f.peakTime||f.beginTime)).map(f=>[String(f.peakTime||f.beginTime).slice(0,16),String(f.classType)])}),
   wkGst:j=>{const kp={};(Array.isArray(j)?j:[]).forEach(g=>(g.allKpIndex||[]).forEach(k=>{const d=String(k.observedTime||'').slice(0,10),v=Math.round(+k.kpIndex);if(d.length===10&&isFinite(v))kp[d]=Math.max(kp[d]||0,v)}));return kp},
-  wkCme:j=>(Array.isArray(j)?j:[]).length,
+  wkKp3:j=>{const L=[];(Array.isArray(j)?j:[]).forEach(g=>(g.allKpIndex||[]).forEach(k=>{const t=String(k.observedTime||'').slice(0,16),v=+k.kpIndex;if(t.length===16&&isFinite(v))L.push([t,v])}));return L.sort((a,b)=>a[0]<b[0]?-1:1)},
+  wkCmes:j=>(Array.isArray(j)?j:[]).filter(c=>c.startTime).map(c=>{const A=(c.cmeAnalyses||[]),a=A.find(x=>x.isMostAccurate)||A[0]||{},v=+a.speed;
+    return[String(c.startTime).slice(0,16),!isFinite(v)||!v?'unknown':v<500?'slow':v<1000?'medium':'fast']}),
+  wkEnlil:j=>(Array.isArray(j)?j:[]).map(e=>String(e.modelCompletionTime||'').slice(0,16)).filter(t=>t.length===16),
+  wkSep:j=>(Array.isArray(j)?j:[]).map(e=>String(e.eventTime||'').slice(0,16)).filter(t=>t.length===16),
+  wkIps:j=>(Array.isArray(j)?j:[]).filter(e=>!e.location||/earth/i.test(e.location)).map(e=>String(e.eventTime||'').slice(0,16)).filter(t=>t.length===16),
+  wkHss:j=>(Array.isArray(j)?j:[]).map(e=>String(e.eventTime||'').slice(0,16)).filter(t=>t.length===16),
+  wkMpc:j=>(Array.isArray(j)?j:[]).map(e=>String(e.eventTime||'').slice(0,16)).filter(t=>t.length===16),
+  wkRbe:j=>(Array.isArray(j)?j:[]).map(e=>String(e.eventTime||'').slice(0,16)).filter(t=>t.length===16),
   flares:j=>(Array.isArray(j)?j:[]).filter(f=>f.classType).map(f=>({cls:f.classType,date:(f.peakTime||f.beginTime||'').slice(0,10)})).reverse(),
   neo:j=>{const all=Object.values(j.near_earth_objects||{}).flat();if(!all.length)return null;
     const c=all.map(o=>({name:o.name,km:Math.round(+o.close_approach_data?.[0]?.miss_distance?.kilometers||Infinity),date:o.close_approach_data?.[0]?.close_approach_date,hazardous:o.is_potentially_hazardous_asteroid})).sort((a,b)=>a.km-b.km)[0];
@@ -497,7 +505,8 @@ async function loadNasa(force=false){
   if(NASA.loading)return;NASA.loading=true;
   const today=new Date(),past=new Date(Date.now()-30*864e5);
   const wk=new Date(Date.now()-7*864e5);
-  const Q={wkFlr:`DONKI/FLR?startDate=${iso(wk)}&endDate=${iso(today)}`,wkGst:`DONKI/GST?startDate=${iso(wk)}&endDate=${iso(today)}`,wkCme:`DONKI/CME?startDate=${iso(wk)}&endDate=${iso(today)}`,
+  const Q={wkFlr:`DONKI/FLR?startDate=${iso(wk)}&endDate=${iso(today)}`,wkGst:`DONKI/GST?startDate=${iso(wk)}&endDate=${iso(today)}`,wkKp3:`DONKI/GST?startDate=${iso(wk)}&endDate=${iso(today)}`,
+    ...Object.fromEntries([['wkCmes','CME'],['wkEnlil','WSAEnlilSimulations'],['wkSep','SEP'],['wkIps','IPS'],['wkHss','HSS'],['wkMpc','MPC'],['wkRbe','RBE']].map(([k,t])=>[k,`DONKI/${t}?startDate=${iso(wk)}&endDate=${iso(today)}`])),
     flares:`DONKI/FLR?startDate=${iso(past)}&endDate=${iso(today)}`,neo:`neo/rest/v1/feed?start_date=${iso(today)}&end_date=${iso(today)}`,
     photos:'mars-photos/api/v1/rovers/curiosity/latest_photos',apod:'planetary/apod?count=8'};
   const cache=readCache();
@@ -523,13 +532,20 @@ function pickPhoto(){const L=NASA.pics.filter(p=>S.body==='mars'||p.kind==='apod
 // A new snapshot is taken every Monday. The weekly refresh moves "cur" into "prev" and writes the new week into "cur".
 // Format per week: from/to (YYYY-MM-DD, sol 1 = the day after "from"), taken (date of the snapshot),
 // flares: [["YYYY-MM-DDTHH:MM","class"],...] (peak time UTC, peak class), kpDays: {"YYYY-MM-DD": highest Kp that day}.
+// Optional donki: the 9 tracks of the NASA DONKI timeline (see dkTimeline below). Nov 9-14 flares, Kp, CMEs and ENLIL runs in the
+// current SPACEWX were measured from the DONKI timeline chart: time axis 15.47 px/hour (about +-5 min), Kp bars 13.5 px per Kp (exact
+// thirds), flare class from a log fit to the 14 Nov 7-8 flares with known NOAA classes (max error 8%). Nov 8 flares are the NOAA list.
 // WX-SNAPSHOT-START
-const SPACEWX_LAST={src:'NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index)',from:'2026-10-28',to:'2026-11-04',taken:'2026-11-05',
-  flares:[["2026-10-28T08:39", "B8.4"], ["2026-10-28T11:09", "B6.3"], ["2026-10-28T12:52", "B6.4"], ["2026-10-30T13:22", "B7.3"], ["2026-10-30T16:07", "B5.7"], ["2026-10-30T22:38", "B5.1"], ["2026-10-30T23:24", "B3.4"], ["2026-10-30T23:42", "B3.6"], ["2026-10-31T01:11", "B4.5"], ["2026-10-31T03:21", "B3.2"], ["2026-10-31T06:13", "B3.4"], ["2026-10-31T09:14", "B6.3"], ["2026-10-31T15:20", "B3.6"], ["2026-10-31T15:42", "B3.8"], ["2026-10-31T19:13", "B4.1"], ["2026-10-31T19:55", "B5.9"], ["2026-10-31T20:37", "B3.6"], ["2026-10-31T20:51", "B4.0"], ["2026-11-01T12:36", "C1.1"], ["2026-11-01T14:01", "B5.2"], ["2026-11-01T18:38", "B4.7"], ["2026-11-02T06:08", "B7.7"], ["2026-11-02T16:44", "B4.2"], ["2026-11-02T21:04", "B5.6"], ["2026-11-02T22:08", "B8.0"], ["2026-11-03T06:15", "B4.8"], ["2026-11-03T16:40", "B4.2"], ["2026-11-03T18:28", "B4.7"], ["2026-11-03T19:25", "B4.6"], ["2026-11-03T22:39", "C1.1"], ["2026-11-04T06:54", "C1.2"]],
-  storm:{t:'2026-10-31T18:00',kp:6,g:'G2'},level:'Quiet',sunMult:0.9,kpDays:{'2026-10-31':6}};
-const SPACEWX={src:'NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index)',from:'2026-11-01',to:'2026-11-08',taken:'2026-11-09',
+const SPACEWX_LAST={src:'NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index)',from:'2026-11-01',to:'2026-11-08',taken:'2026-11-09',
   flares:[["2026-11-02T06:08", "B7.7"], ["2026-11-02T16:44", "B4.2"], ["2026-11-02T21:04", "B5.6"], ["2026-11-02T22:08", "B8.0"], ["2026-11-03T06:15", "B4.8"], ["2026-11-03T16:40", "B4.2"], ["2026-11-03T18:28", "B4.7"], ["2026-11-03T19:25", "B4.6"], ["2026-11-03T22:39", "C1.1"], ["2026-11-04T06:54", "C1.2"], ["2026-11-04T15:00", "B9.7"], ["2026-11-04T17:34", "C2.2"], ["2026-11-05T00:13", "B9.4"], ["2026-11-05T02:18", "B9.1"], ["2026-11-05T05:18", "B9.7"], ["2026-11-05T06:12", "B9.1"], ["2026-11-05T17:00", "C1.1"], ["2026-11-05T18:33", "M3.5"], ["2026-11-05T21:34", "C2.9"], ["2026-11-05T22:21", "C1.2"], ["2026-11-05T22:31", "C1.3"], ["2026-11-06T00:24", "C2.5"], ["2026-11-06T02:51", "C5.6"], ["2026-11-06T04:58", "C1.8"], ["2026-11-06T07:09", "C1.3"], ["2026-11-06T08:00", "C4.0"], ["2026-11-06T08:36", "C2.6"], ["2026-11-06T11:03", "C2.2"], ["2026-11-06T12:12", "C1.1"], ["2026-11-06T13:47", "C2.9"], ["2026-11-06T15:24", "C3.7"], ["2026-11-06T15:58", "C2.5"], ["2026-11-06T17:46", "C1.5"], ["2026-11-06T18:29", "C3.1"], ["2026-11-06T18:45", "C1.7"], ["2026-11-06T20:03", "C2.0"], ["2026-11-06T20:22", "C2.0"], ["2026-11-06T21:41", "C2.9"], ["2026-11-06T22:24", "C1.6"], ["2026-11-06T22:33", "C3.4"], ["2026-11-06T22:51", "C2.2"], ["2026-11-06T23:02", "C4.1"], ["2026-11-06T23:26", "C4.6"], ["2026-11-07T00:28", "C1.4"], ["2026-11-07T00:53", "C5.9"], ["2026-11-07T02:02", "C2.8"], ["2026-11-07T02:11", "C3.0"], ["2026-11-07T02:44", "C2.3"], ["2026-11-07T03:23", "C2.9"], ["2026-11-07T03:36", "C4.9"], ["2026-11-07T05:26", "C1.5"], ["2026-11-07T05:50", "C1.9"], ["2026-11-07T06:19", "C1.4"], ["2026-11-07T06:36", "C1.3"], ["2026-11-07T07:35", "C5.5"], ["2026-11-07T08:23", "C4.2"], ["2026-11-07T11:57", "C6.2"], ["2026-11-07T12:43", "M1.2"], ["2026-11-07T13:41", "C1.6"], ["2026-11-07T14:12", "C1.3"], ["2026-11-07T14:30", "C1.1"], ["2026-11-07T14:46", "C1.8"], ["2026-11-07T15:24", "C1.6"], ["2026-11-07T15:45", "C1.1"], ["2026-11-07T16:31", "C1.3"], ["2026-11-07T16:50", "C4.9"], ["2026-11-07T17:17", "M1.4"], ["2026-11-07T18:42", "M1.9"], ["2026-11-07T20:24", "C2.8"], ["2026-11-07T20:41", "C3.7"], ["2026-11-07T21:59", "C5.9"], ["2026-11-07T23:31", "C2.5"], ["2026-11-08T00:49", "C3.9"], ["2026-11-08T01:07", "C4.4"], ["2026-11-08T01:39", "C2.3"], ["2026-11-08T02:17", "C3.0"], ["2026-11-08T02:35", "C2.9"], ["2026-11-08T03:24", "C8.9"], ["2026-11-08T04:18", "C3.7"], ["2026-11-08T05:49", "C2.7"], ["2026-11-08T06:04", "C2.3"], ["2026-11-08T06:36", "C2.9"], ["2026-11-08T07:46", "M1.7"], ["2026-11-08T08:43", "C8.0"], ["2026-11-08T09:13", "C2.1"], ["2026-11-08T09:47", "C1.5"], ["2026-11-08T10:07", "C2.1"], ["2026-11-08T11:27", "C2.7"], ["2026-11-08T11:44", "C2.8"], ["2026-11-08T13:10", "C1.3"], ["2026-11-08T13:43", "C1.2"], ["2026-11-08T14:21", "C1.8"], ["2026-11-08T14:33", "C2.0"], ["2026-11-08T15:37", "M1.1"], ["2026-11-08T16:32", "C1.2"], ["2026-11-08T18:13", "C1.8"], ["2026-11-08T18:27", "M1.1"], ["2026-11-08T20:53", "C8.0"], ["2026-11-08T21:53", "C1.2"], ["2026-11-08T22:02", "C1.3"], ["2026-11-08T23:01", "C1.7"], ["2026-11-08T23:38", "C1.3"]],
   storm:{t:'2026-11-07T18:00',kp:5,g:'G1'},kpDays:{"2026-11-02": 3, "2026-11-03": 2, "2026-11-04": 3, "2026-11-05": 2, "2026-11-06": 3, "2026-11-07": 5, "2026-11-08": 5}};
+const SPACEWX={src:'NASA DONKI space weather timeline (measured pixel by pixel from the chart)',from:'2026-11-07',to:'2026-11-14',taken:'2026-11-14',
+  flares:[["2026-11-08T00:49","C3.9"],["2026-11-08T01:07","C4.4"],["2026-11-08T01:39","C2.3"],["2026-11-08T02:17","C3.0"],["2026-11-08T02:35","C2.9"],["2026-11-08T03:24","C8.9"],["2026-11-08T04:18","C3.7"],["2026-11-08T05:49","C2.7"],["2026-11-08T06:04","C2.3"],["2026-11-08T06:36","C2.9"],["2026-11-08T07:46","M1.7"],["2026-11-08T08:43","C8.0"],["2026-11-08T09:13","C2.1"],["2026-11-08T09:47","C1.5"],["2026-11-08T10:07","C2.1"],["2026-11-08T11:27","C2.7"],["2026-11-08T11:44","C2.8"],["2026-11-08T13:10","C1.3"],["2026-11-08T13:43","C1.2"],["2026-11-08T14:21","C1.8"],["2026-11-08T14:33","C2.0"],["2026-11-08T15:37","M1.1"],["2026-11-08T16:32","C1.2"],["2026-11-08T18:13","C1.8"],["2026-11-08T18:27","M1.1"],["2026-11-08T20:53","C8.0"],["2026-11-08T21:53","C1.2"],["2026-11-08T22:02","C1.3"],["2026-11-08T23:01","C1.7"],["2026-11-08T23:38","C1.3"],["2026-11-09T00:27","C2.4"],["2026-11-09T01:10","C4.9"],["2026-11-09T02:24","C1.1"],["2026-11-09T04:08","C5.5"],["2026-11-09T05:18","C1.8"],["2026-11-09T06:28","C1.4"],["2026-11-09T08:55","C2.0"],["2026-11-09T11:15","C1.3"],["2026-11-09T13:15","C1.4"],["2026-11-09T14:25","C5.5"],["2026-11-09T15:08","C2.9"],["2026-11-09T17:12","C5.5"],["2026-11-09T18:06","C3.2"],["2026-11-09T19:47","C1.6"],["2026-11-09T20:14","C1.7"],["2026-11-09T23:43","C3.0"],["2026-11-10T01:40","C2.0"],["2026-11-10T03:28","C2.4"],["2026-11-10T04:03","C3.2"],["2026-11-10T07:05","C2.6"],["2026-11-10T08:35","C9.4"],["2026-11-10T10:00","C8.9"],["2026-11-10T12:16","C1.3"],["2026-11-10T13:25","C3.2"],["2026-11-10T16:59","C1.3"],["2026-11-10T18:20","C2.3"],["2026-11-10T20:32","C2.4"],["2026-11-11T00:36","C1.1"],["2026-11-11T03:46","C2.1"],["2026-11-11T04:29","C2.2"],["2026-11-11T10:10","B9.6"],["2026-11-11T13:28","C1.0"],["2026-11-11T14:38","C1.2"],["2026-11-11T17:48","C3.2"],["2026-11-11T18:23","C2.2"],["2026-11-11T20:15","C1.3"],["2026-11-11T21:17","M1.6"],["2026-11-11T22:23","C1.1"],["2026-11-12T00:35","C1.8"],["2026-11-12T02:43","C2.4"],["2026-11-12T03:41","C7.2"],["2026-11-12T04:28","C1.8"],["2026-11-12T05:26","C1.2"],["2026-11-12T06:20","C1.7"],["2026-11-12T08:01","B9.1"],["2026-11-12T08:51","C2.1"],["2026-11-12T10:05","C2.1"],["2026-11-12T11:11","C4.0"],["2026-11-12T12:25","C2.7"],["2026-11-12T15:00","C2.6"],["2026-11-12T16:21","C1.2"],["2026-11-12T18:53","C1.0"],["2026-11-12T20:10","C1.8"],["2026-11-12T20:49","B8.6"],["2026-11-12T22:41","C1.3"],["2026-11-12T23:59","B8.6"],["2026-11-13T00:42","B9.6"],["2026-11-13T01:28","C1.1"],["2026-11-13T09:44","C1.1"],["2026-11-13T11:17","C1.0"],["2026-11-13T12:27","B9.6"],["2026-11-13T13:53","C1.0"],["2026-11-13T14:20","C1.2"],["2026-11-13T17:38","C1.3"],["2026-11-13T18:20","C5.5"],["2026-11-13T21:57","C1.6"],["2026-11-13T23:38","C2.0"],["2026-11-14T00:09","C1.6"],["2026-11-14T01:38","C1.8"],["2026-11-14T03:31","C1.2"],["2026-11-14T06:06","C4.2"]],
+  kpDays:{"2026-11-08":5.0,"2026-11-09":3.33,"2026-11-10":3.0,"2026-11-11":2.67,"2026-11-12":1.67,"2026-11-13":1.33,"2026-11-14":1.0},
+  donki:{upto:'2026-11-14T10:00',kp3:[["2026-11-08T00:00",5.0],["2026-11-08T03:00",3.33],["2026-11-08T06:00",3.0],["2026-11-08T09:00",3.33],["2026-11-08T12:00",2.67],["2026-11-08T15:00",3.33],["2026-11-08T18:00",4.0],["2026-11-08T21:00",2.67],["2026-11-09T00:00",3.0],["2026-11-09T03:00",3.33],["2026-11-09T06:00",2.67],["2026-11-09T09:00",2.67],["2026-11-09T12:00",2.0],["2026-11-09T15:00",2.67],["2026-11-09T18:00",2.67],["2026-11-09T21:00",2.0],["2026-11-10T00:00",3.0],["2026-11-10T03:00",3.0],["2026-11-10T06:00",2.33],["2026-11-10T09:00",2.67],["2026-11-10T12:00",1.33],["2026-11-10T15:00",3.0],["2026-11-10T18:00",2.33],["2026-11-10T21:00",2.0],["2026-11-11T00:00",1.67],["2026-11-11T03:00",0.67],["2026-11-11T06:00",1.67],["2026-11-11T09:00",2.33],["2026-11-11T12:00",1.0],["2026-11-11T15:00",1.33],["2026-11-11T18:00",2.67],["2026-11-11T21:00",1.33],["2026-11-12T00:00",1.0],["2026-11-12T03:00",1.67],["2026-11-12T06:00",1.67],["2026-11-12T09:00",0.67],["2026-11-12T12:00",0.67],["2026-11-12T15:00",0.33],["2026-11-12T18:00",1.33],["2026-11-12T21:00",1.67],["2026-11-13T00:00",1.33],["2026-11-13T03:00",0.33],["2026-11-13T06:00",1.33],["2026-11-13T09:00",1.0],["2026-11-13T12:00",0.67],["2026-11-13T15:00",0.67],["2026-11-13T18:00",0.67],["2026-11-13T21:00",0.67],["2026-11-14T00:00",0.33],["2026-11-14T03:00",0.67],["2026-11-14T06:00",1.0]],
+    cme:[["2026-11-08T00:44","medium"],["2026-11-08T08:46","medium"],["2026-11-09T09:11","slow"],["2026-11-09T10:52","fast"],["2026-11-09T18:15","slow"],["2026-11-10T01:59","slow"],["2026-11-10T02:12","fast"],["2026-11-10T05:30","slow"],["2026-11-11T23:23","fast"],["2026-11-12T01:53","slow"],["2026-11-12T21:13","fast"],["2026-11-13T01:27","fast"],["2026-11-13T03:26","slow"],["2026-11-13T09:24","medium"],["2026-11-13T21:25","slow"],["2026-11-14T01:50","slow"],["2026-11-14T04:00","slow"]],
+    enlil:["2026-11-08T00:43","2026-11-09T18:15","2026-11-10T01:59","2026-11-10T02:12","2026-11-11T23:23","2026-11-13T03:26"],sep:[],ips:[],hss:[],mpc:[],rbe:[],
+    lv:{sep:[41,44,44,40,38,40,39],wind:[75,68,58,37,28,15,14],mpc:[41,41,48,50,57,60,54],rbe:[68,82,88,88,83,88,84]}}};
 // The Monday refresh adds SPACEWX_LAST (last week's SPACEWX, same fields) above this line. Until then there is no comparison.
 // WX-SNAPSHOT-END
 const WX_SRC='NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index)';
@@ -540,7 +556,7 @@ function wxDerive(w){
   const stormDays=days.filter(([d,k])=>k>=5).length;
   const cPlus=w.flares.filter(f=>/^[CMX]/.test(f[1])).length,b0=String(big||'A')[0];
   const [level,sunMult]=b0==='X'?['Very active',1.25]:b0==='M'?['Active',1.1]:b0==='C'?(cPlus>=10?['Moderate',1]:['Quiet',0.9]):['Very quiet',0.85];
-  return Object.assign({},w,{src:WX_SRC,big,maxKp:top?top[1]:0,stormDays,storm:top&&top[1]>=5?{t:top[0]+'T00:00',kp:top[1],g:gScale(top[1])}:null,level:w.level||level,sunMult:w.sunMult||sunMult});
+  return Object.assign({},w,{src:w.src||WX_SRC,cmes:w.cmes!=null?w.cmes:w.donki&&w.donki.cme?w.donki.cme.length:undefined,big,maxKp:top?top[1]:0,stormDays,storm:top&&top[1]>=5?{t:top[0]+'T00:00',kp:top[1],g:gScale(top[1])}:null,level:w.level||level,sunMult:w.sunMult||sunMult});
 }
 const wxNorm=w=>w&&Object.assign({},w,{kpDays:w.kpDays||(w.storm&&w.storm.t?{[w.storm.t.slice(0,10)]:w.storm.kp}:{})});
 let WX=wxDerive(wxNorm(SPACEWX)),WX_PREV=typeof SPACEWX_LAST!=='undefined'?wxNorm(SPACEWX_LAST):null;
@@ -550,15 +566,27 @@ const addDays=(d,n)=>new Date(Date.parse(d+'T00:00:00Z')+n*864e5).toISOString().
 // Sol 1 to 7 replay the 7 real days after WX.from.
 function realDay(sol){const d=addDays(WX.from,Math.max(1,Math.min(7,sol)));
   const fl=WX.flares.filter(f=>f[0].startsWith(d)),big=fl.map(f=>f[1]).sort((a,b)=>flareRank(b)-flareRank(a))[0];
-  const k=(WX.kpDays||{})[d];return{d,n:fl.length,big,kp:k>=5?k:null}}
+  const k=(WX.kpDays||{})[d],dk=WX.donki||{},on=a=>a?a.filter(x=>String(Array.isArray(x)?x[0]:x).startsWith(d)).length:0;
+  const cm=(dk.cme||[]).filter(c=>c[0].startsWith(d));
+  return{d,n:fl.length,big,kp:k>=5?k:null,kpMax:k!=null?k:null,cme:cm.length,cmeFast:cm.filter(c=>c[1]==='fast').length,enlil:on(dk.enlil),sep:on(dk.sep),ips:on(dk.ips),hss:on(dk.hss),mpc:on(dk.mpc),rbe:on(dk.rbe),has:!!WX.donki}}
+const kpTxt=k=>String(Math.round(k*10)/10);
+// SEP (solar energetic particles) day: walking outside the safe zone costs 50% more radiation shield.
+const sepX=()=>S&&realDay(S.sol).sep?1.5:1;
+function donkiDayText(r){if(!r.has)return '';const L=[];
+  if(r.cme)L.push(`${r.cme} sun cloud${r.cme>1?'s':''} (CME${r.cme>1?'s':''}) left the Sun${r.cmeFast?`, ${r.cmeFast} fast`:''}`);
+  if(r.enlil)L.push(`${r.enlil} computer forecast${r.enlil>1?'s':''} (ENLIL)`);
+  if(r.ips)L.push('a sun cloud hit Earth (ICME shock)');if(r.hss)L.push('fast solar wind arrived (HSS)');
+  if(r.mpc)L.push('Earth\'s magnetic shield got squeezed (MPC)');if(r.rbe)L.push('radiation belts boosted (RBE)');
+  return ` NASA DONKI: ${L.length?L.join(', ')+'.':'no sun clouds or other events.'} ${r.sep?'Particle storm (SEP)! Walking outside the safe zone costs 50% more shield today.':'No particle storm (SEP).'}`}
 function realDayText(sol){const r=realDay(sol);
-  return `${fmtD(r.d)}: ${r.n?`${r.n} solar flare${r.n>1?'s':''}, biggest ${r.big}`:'no solar flares'}${r.kp?`. Geomagnetic storm on Earth (Kp ${r.kp}, ${gScale(r.kp)}): auroras, and static on the radio link, so sending data takes 50% longer today`:'. No geomagnetic storm on Earth (Kp under 5)'}.`}
+  return `${fmtD(r.d)}: ${r.n?`${r.n} solar flare${r.n>1?'s':''}, biggest ${r.big}`:'no solar flares'}${r.kp?`. Geomagnetic storm on Earth (Kp ${kpTxt(r.kp)}, ${gScale(r.kp)}): auroras, and static on the radio link, so sending data takes 50% longer today`:`. No geomagnetic storm on Earth (${r.kpMax!=null?`highest Kp ${kpTxt(r.kpMax)}`:'Kp under 5'})`}.${donkiDayText(r)}`}
 function weekText(){const W=WX,pct=Math.round(Math.abs(W.sunMult-1)*100);
-  return `${W.cmes!=null?`${W.cmes} coronal mass ejection${W.cmes===1?'':'s'} (CMEs) seen by NASA DONKI this week. `:''}${fmtD(W.from)} to ${fmtD(W.to)}: ${W.flares.length} solar flares, biggest ${W.big||'none'}. ${W.storm?`${W.stormDays} geomagnetic storm day${W.stormDays>1?'s':''}, strongest Kp ${W.storm.kp} (${W.storm.g}) on ${fmtD(W.storm.t.slice(0,10))}`:`No geomagnetic storms (highest Kp ${W.maxKp})`}. Sun activity: ${W.level}, so radiation storms in this game are ${W.sunMult===1?'normal strength':`${pct}% ${W.sunMult<1?'weaker':'stronger'}`}.`}
+  return `${W.cmes!=null?`${W.cmes} coronal mass ejection${W.cmes===1?'':'s'} (CMEs) seen by NASA DONKI this week. `:''}${fmtD(addDays(W.from,1))} to ${fmtD(W.to)}: ${/pixel/.test(W.src||'')?'at least ':''}${W.flares.length} solar flares, biggest ${W.big||'none'}. ${W.storm?`${W.stormDays} geomagnetic storm day${W.stormDays>1?'s':''}, strongest Kp ${kpTxt(W.storm.kp)} (${W.storm.g}) on ${fmtD(W.storm.t.slice(0,10))}`:`No geomagnetic storms (highest Kp ${kpTxt(W.maxKp)})`}. Sun activity: ${W.level}, so radiation storms in this game are ${W.sunMult===1?'normal strength':`${pct}% ${W.sunMult<1?'weaker':'stronger'}`}.`}
 // ---- weekly refresh + this week vs last week ----
 function wxCompare(prev,cur){if(!prev)return null;const P=wxDerive(wxNorm(prev)),C=cur,rows=[];
   const cmp=(name,a,b,fmt=x=>x,lowerBetter=true)=>{const d=b>a?1:b<a?-1:0;rows.push({name,txt:`${fmt(a)} → ${fmt(b)}`,res:d===0?'same':(d<0)===lowerBetter?'better':'worse'})};
-  cmp('Solar flares',P.flares.length,C.flares.length);
+  // Chart-measured weeks miss some small overlapping flares, so a flare count from them is not compared with an official list.
+  if(!/pixel/.test((P.src||'')+(C.src||'')))cmp('Solar flares',P.flares.length,C.flares.length);
   cmp('Biggest flare',P.big?flareRank(P.big):0,C.big?flareRank(C.big):0,x=>x===flareRank(P.big||'')&&P.big?P.big:x===flareRank(C.big||'')&&C.big?C.big:'none');
   cmp('Strongest geomagnetic storm (Kp)',P.maxKp,C.maxKp);
   cmp('Geomagnetic storm days',P.stormDays,C.stormDays);
@@ -576,16 +604,64 @@ const okLive=k=>NASA.live[k]==='live'||NASA.live[k]==='cached';
 function applyDonki(){
   const today=new Date(),to=iso(today),from=iso(new Date(Date.now()-7*864e5));
   let base;
-  if(okLive('wkFlr')&&NASA.data.wkFlr){base={from,to,taken:to,flares:NASA.data.wkFlr.list,kpDays:okLive('wkGst')&&NASA.data.wkGst?NASA.data.wkGst:{},how:'donki'};
+  if(okLive('wkFlr')&&NASA.data.wkFlr){const L=k=>okLive(k)&&NASA.data[k]?NASA.data[k]:null;
+    base={from,to,taken:to,src:'NASA DONKI (live)',flares:NASA.data.wkFlr.list,kpDays:okLive('wkGst')&&NASA.data.wkGst?NASA.data.wkGst:{},how:'donki',
+      donki:{upto:new Date().toISOString().slice(0,16),kp3:L('wkKp3'),cme:L('wkCmes'),enlil:L('wkEnlil'),sep:L('wkSep'),ips:L('wkIps'),hss:L('wkHss'),mpc:L('wkMpc'),rbe:L('wkRbe')}};
     const snapNow=wxNorm(SPACEWX);WX_PREV=weekId(snapNow.to)!==weekId(to)?snapNow:(typeof SPACEWX_LAST!=='undefined'?wxNorm(SPACEWX_LAST):null)}
   else base=Object.assign(wxNorm(SPACEWX),{how:'noaa'});
   const W=wxDerive(base);
-  if(okLive('wkCme')&&NASA.data.wkCme!=null){W.cmes=NASA.data.wkCme;if(W.cmes>=15&&W.sunMult<1.25){W.sunMult=Math.round((W.sunMult+0.1)*100)/100;W.level+=', with a busy CME week'}}
-  WX=W;renderSpaceWx();
+  if(okLive('wkCmes')&&NASA.data.wkCmes){W.cmes=NASA.data.wkCmes.length;if(W.cmes>=15&&W.sunMult<1.25){W.sunMult=Math.round((W.sunMult+0.1)*100)/100;W.level+=', with a busy CME week'}}
+  WX=W;renderSpaceWx();const dt=$('#dataTables');if(dt)dt.innerHTML=dataTables();
 }
 function renderSpaceWx(){const el=$('#spacewxNote');if(!el)return;
-  const how=WX.how==='donki'?'Live from NASA DONKI, last 7 days':`NOAA snapshot taken ${fmtD(WX.taken||WX.to)}, updated every Monday`;
-  el.innerHTML=`<b>Real space weather.</b> ${esc(how)}: ${esc(weekText())}<div style="margin-top:6px">${wxCompareHtml(wxCompare(WX_PREV,WX))}</div>`;}
+  const how=WX.how==='donki'?'Live from NASA DONKI, last 7 days':`Snapshot taken ${fmtD(WX.taken||WX.to)} from ${WX.src}`;
+  el.innerHTML=`<b>Real space weather.</b> ${esc(how)}: ${esc(weekText())}<div style="margin-top:6px">${wxCompareHtml(wxCompare(WX_PREV,WX))}</div>${dkTimeline(0)}`;}
+const wxSrcShort=()=>WX.how==='donki'?'NASA DONKI, live':/DONKI/.test(WX.src||'')?'NASA DONKI':'NOAA';
+// ---- NASA DONKI timeline: the same 9 tracks as NASA's DONKI space weather timeline, one column per sol ----
+// WX.donki: kp3 [[time,Kp]] every 3 hours; cme [[time,'slow'|'medium'|'fast']]; enlil, sep, ips, hss, mpc, rbe: [time,...];
+// lv (snapshot only): {sep,wind,mpc,rbe} daily chart level 0-100, measured from the curves when DONKI logged no event.
+const DK_ROWS=[
+  ['flr','☀️','Solar flares','FLR','Flashes of X-rays from the Sun. A taller line is a bigger flare; circles are M or X class.'],
+  ['sep','⚡','Particle storm','SEP','Super-fast particles from the Sun. Dangerous for astronauts outside: in the game, walking costs 50% more shield that day.'],
+  ['cme','💨','Sun clouds','CME','Giant clouds of gas thrown off the Sun. Yellow is slow, orange is medium, red is fast.'],
+  ['enlil','🖥️','Computer forecast','ENLIL','A NASA computer model (WSA-ENLIL) runs to predict where a sun cloud will go and when it arrives.'],
+  ['ips','💥','Cloud hits Earth','ICME','The shock wave of a sun cloud reaches Earth.'],
+  ['hss','🌬️','Fast solar wind','HSS','A fast stream of solar wind from a hole in the Sun\'s outer layer. The shaded bars show how fast the wind was each day.'],
+  ['mpc','🧲','Shield squeezed','MPC','Earth\'s magnetic bubble is pushed in so far that satellites end up outside it.'],
+  ['rbe','🎯','Radiation belts','RBE','Extra energetic electrons in the radiation belts around Earth. They can harm satellites.'],
+  ['gst','🌈','Magnetic storm','GST','The Kp index every 3 hours, from 0 (calm) to 9 (extreme). Kp 5 or more is a geomagnetic storm, with auroras.']];
+let dkOpen=false;
+function dkTimeline(sol){const dk=WX.donki;if(!dk)return '';
+  const L=158,Wd=790,RH=26,top=20,H=top+RH*DK_ROWS.length+4,t0=Date.parse(addDays(WX.from,1)+'T00:00:00Z'),span=7*864e5;
+  const X=t=>L+(Date.parse(t+(t.length===16?':00Z':''))-t0)/span*(Wd-L),inW=t=>{const x=X(t);return x>=L&&x<=Wd};
+  const fl=c=>({A:1e-8,B:1e-7,C:1e-6,M:1e-5,X:1e-4}[String(c)[0]]||1e-8)*(parseFloat(String(c).slice(1))||1);
+  const tip=s=>`<title>${esc(s)}</title>`,cmeC={slow:'#f5c84e',medium:'#ec9a52',fast:'#e0605a',unknown:'#c3c9db'};
+  let g='';
+  for(let d=0;d<7;d++){const x=L+d*(Wd-L)/7,w=(Wd-L)/7,date=addDays(WX.from,d+1);
+    if(sol===d+1)g+=`<rect x="${x}" y="${top}" width="${w}" height="${H-top}" fill="#f2b33d" opacity=".14"/>`;
+    g+=`<line x1="${x}" x2="${x}" y1="${top-4}" y2="${H}" stroke="#66739c" stroke-width=".6"/><text x="${x+w/2}" y="13" text-anchor="middle" font-size="10.5" fill="${sol===d+1?'#f2b33d':'#c3c9db'}" font-weight="${sol===d+1?700:400}">Sol ${d+1} · ${MON[+date.slice(5,7)-1]} ${+date.slice(8,10)}</text>`}
+  if(dk.upto&&inW(dk.upto)){const x=X(dk.upto);g+=`<rect x="${x}" y="${top}" width="${Wd-x}" height="${H-top}" fill="#03040a" opacity=".55">${tip('No data yet after '+dk.upto.replace('T',' ')+' UTC')}</rect>`}
+  DK_ROWS.forEach(([k,ic,name,code,why],i)=>{const y0=top+i*RH,yb=y0+RH-3,lv=dk.lv||{};
+    g+=`<line x1="0" x2="${Wd}" y1="${y0+RH}" y2="${y0+RH}" stroke="#3a4466" stroke-width=".6"/><text x="2" y="${y0+16}" font-size="11.5" fill="#f7f4ec">${ic} ${name}<tspan fill="#c3c9db" font-size="9"> ${code}</tspan>${tip(why)}</text>`;
+    const lvKey={sep:'sep',hss:'wind',mpc:'mpc',rbe:'rbe'}[k];
+    if(lvKey&&lv[lvKey])lv[lvKey].forEach((v,d)=>{const h=(RH-6)*v/100,x=L+d*(Wd-L)/7;g+=`<rect x="${x+2}" y="${yb-h}" width="${(Wd-L)/7-4}" height="${h}" fill="#52b7e0" opacity=".22">${tip(`${name}: chart level ${v} of 100 on sol ${d+1}`)}</rect>`});
+    if(k==='flr'){WX.flares.filter(f=>inW(f[0])).forEach(([t,c])=>{const x=X(t),h=Math.max(2,Math.min(1,(Math.log10(fl(c))+7)/3)*(RH-5));
+        g+=`<line x1="${x}" x2="${x}" y1="${yb}" y2="${yb-h}" stroke="${/^[MX]/.test(c)?'#ffffff':'#7fb2ff'}" stroke-width="${/^[MX]/.test(c)?1.6:1}">${tip(c+' flare, '+t.replace('T',' ')+' UTC')}</line>`;
+        if(/^[MX]/.test(c))g+=`<circle cx="${x}" cy="${yb-h-2}" r="2.6" fill="none" stroke="#fff" stroke-width="1.2"/>`});return}
+    if(k==='gst'){if(!dk.kp3){g+=`<text x="${L+6}" y="${y0+16}" font-size="10" fill="#c3c9db">no data</text>`;return}
+      dk.kp3.filter(e=>inW(e[0])).forEach(([t,kp])=>{const x=X(t),w=(Wd-L)/56,h=Math.max(1,(RH-5)*kp/9);
+        g+=`<rect x="${x+.5}" y="${yb-h}" width="${w-1}" height="${h}" fill="${kp>=8?'#e0605a':kp>=6?'#ec9a52':kp>=5?'#f5d547':'#6ad99a'}" opacity=".85">${tip(`Kp ${kpTxt(kp)}${kp>=5?' ('+gScale(kp)+' storm)':''}, ${t.replace('T',' ')} UTC`)}</rect>`});return}
+    const ev=dk[k];if(ev==null){g+=`<text x="${L+6}" y="${y0+16}" font-size="10" fill="#c3c9db">no data</text>`;return}
+    ev.forEach(e=>{const t=Array.isArray(e)?e[0]:e;if(!inW(t))return;const x=X(t),cy=y0+RH/2+1;
+      if(k==='cme')g+=`<circle cx="${x}" cy="${cy}" r="4.2" fill="${cmeC[e[1]]||cmeC.unknown}">${tip(`Sun cloud (${e[1]}), ${t.replace('T',' ')} UTC`)}</circle>`;
+      else if(k==='enlil')g+=`<path d="M${x} ${cy-5}L${x+5} ${cy}L${x} ${cy+5}L${x-5} ${cy}Z" fill="none" stroke="#f5c84e" stroke-width="1.4">${tip(`Forecast run, ${t.replace('T',' ')} UTC`)}</path>`;
+      else g+=`<circle cx="${x}" cy="${cy}" r="4.5" fill="#e0605a" stroke="#fff" stroke-width="1">${tip(`${name}, ${t.replace('T',' ')} UTC`)}</circle>`});
+    if(!ev.length&&!(lvKey&&lv[lvKey]))g+=`<text x="${L+6}" y="${y0+16}" font-size="10" fill="#c3c9db">none this week</text>`});
+  const note=/pixel/.test(WX.src||'')?' Nov 9 to 14 values were measured from the chart, so flare times are within about 5 minutes and small overlapping flares can be missed.':'';
+  return `<details class="dk" ${dkOpen?'open':''} ontoggle="dkOpen=this.open"><summary class="label" style="cursor:pointer;margin-top:8px">🛰️ NASA DONKI space weather timeline</summary>
+    <div class="table-wrap"><svg viewBox="0 0 ${Wd} ${H}" width="100%" style="min-width:560px;display:block;font-family:var(--body)" role="img" aria-label="NASA DONKI space weather timeline, ${fmtD(addDays(WX.from,1))} to ${fmtD(WX.to)}">${g}</svg></div>
+    <small style="display:block;color:var(--muted)">Each column is one sol, replaying one real day (UTC). Hover or tap a row name to learn what it means. Source: ${esc(WX.src)}.${note}</small>
+    <ul style="margin:6px 0 0;padding-left:18px;font-size:.85rem">${DK_ROWS.map(r=>`<li><b>${r[1]} ${r[2]} (${r[3]})</b>: ${esc(r[4])}</li>`).join('')}</ul></details>`}
 
 let buildOpen=false;
 // Game modes, easiest to hardest. mult scales drains, storm damage and walking radiation.
@@ -919,8 +995,15 @@ const KB=[
 ["explore|dark tiles|fog","How do I find things to explore?","Walk into the dark tiles. Your astronaut reveals the map around them, showing rocks, meteorites, ice, outcrops and more."],
 ["activities|long jump|rover test","What are the activities?","On an empty tile you can try a low-gravity long jump, hit a golf ball or test-drive the rover, once each, for 30 points."],
 ["who made|who made this game|space apps","Who made this game?","Outpost 7 was designed by Jessie for the NASA Space Apps Challenge, the Junior Astronaut Mission Trainer."],
-["kp index|kp|geomagnetic storm|geomagnetic","What is the Kp index?","Kp measures how stirred up Earth's magnetic field is, from 0 (calm) to 9 (extreme). Kp 5 or more means a geomagnetic storm. On November 7, 2026 it reached Kp 5, a G1 storm, which can make auroras."],
-["real space weather|space weather game|noaa|real sun","Does the game use real space weather?","Yes. Each sol replays a real day from November 2 to November 8, 2026, using NOAA data: that day's solar flares and Earth's geomagnetic storms. That week the Sun was active, with 102 flares and the biggest an M3.5."],
+["kp index|kp|geomagnetic storm|geomagnetic","What is the Kp index?","Kp measures how stirred up Earth's magnetic field is, from 0 (calm) to 9 (extreme). Kp 5 or more means a geomagnetic storm. On November 8, 2026 it reached Kp 5, a G1 storm, which can make auroras. By November 14 it had calmed to Kp 1."],
+["donki|timeline|space weather timeline","What is NASA DONKI?","DONKI is NASA's Space Weather Database Of Notifications, Knowledge, Information. Forecasters log every solar flare, sun cloud (CME), particle storm and magnetic storm there. The game's timeline shows the same 9 rows, one column per sol."],
+["sep|particle storm|energetic particle","What is a solar energetic particle event?","An SEP is a burst of protons and other particles from the Sun moving close to the speed of light. They can reach Mars or the Moon in under an hour and are a big radiation danger for astronauts. In the game, an SEP day makes every step outside the safe zone cost 50% more shield."],
+["hss|high speed stream|solar wind|coronal hole","What is a high speed stream?","Solar wind usually blows at about 400 km/s. From a coronal hole, a dark gap in the Sun's outer layer, it can blow at 700 km/s or more. That fast stream is called an HSS. In mid-November 2026 the solar wind was fast on Nov 8 to 10, then slowed down."],
+["mpc|magnetopause","What is a magnetopause crossing?","The magnetopause is the edge of Earth's magnetic bubble. A strong push from the Sun can squeeze it closer than the satellites 36,000 km up, so they end up outside Earth's shield for a while."],
+["rbe|radiation belt|van allen","What is a radiation belt enhancement?","Earth has two donut-shaped radiation belts, the Van Allen belts. Sometimes they fill up with extra energetic electrons, which can damage satellites. NASA DONKI logs that as an RBE."],
+["enlil|wsa|forecast model|cme forecast","What is the ENLIL model?","WSA-ENLIL is a computer model that NASA and NOAA use to predict where a coronal mass ejection will travel and when it will hit Earth or other planets. Between November 8 and 14, 2026 it ran 6 times."],
+["icme|ips|shock","What is an interplanetary shock?","When a fast sun cloud (CME) plows through the slower solar wind it makes a shock wave. When that shock reaches a spacecraft, DONKI logs an interplanetary shock (IPS), and the cloud is then called an ICME."],
+["real space weather|space weather game|noaa|real sun","Does the game use real space weather?","Yes. Each sol replays a real day from November 8 to November 14, 2026, read from the NASA DONKI space weather timeline: that day's solar flares, sun clouds (CMEs), computer forecasts, particle storms and Earth's magnetic storms. That week the Sun had 101 flares we could measure (the biggest were M1.7 on November 8 and M1.6 on November 11) and threw off 17 CMEs. The week before was active, with 102 flares and the biggest an M3.5."],
 ["all ways points|ways to earn|more science|new tasks|list tasks","What are all the ways to earn science points?","There are 56! At the rocket: study, analyze, grow food, stargaze, photograph moons or Earth. At modules: health checks, logs, plant growth, exercise, radio a school, read your radiation badge. Outside: samples, pictures, radar, rock layers, craters, sand, seismometers and more. The full list is in How to play."],
 ["lava tube shelter|sleep in lava tube|lava tube game","What does the lava tube do in the game?","A lava tube is a natural shelter. It counts as a safe zone, and sleeping there adds 8 to your shelter shield. Exploring it is a Challenge task worth 30 points."],
 ["required modules|mandatory|must build|need to build","Which modules do I have to build?","Cadet needs a habitat and power. Junior adds a comms dish, Commander adds a greenhouse, and Veteran adds a med bay. The build panel shows a checklist."],
@@ -982,7 +1065,8 @@ function earthHints(){
   if(inv.data&&has('comms')&&!td.send&&T(S.ax,S.ay).mod!=='comms')add(6,'Walk to your comms dish and send your data home for 30 points.');
   if(has('weather')&&!td.weather&&T(S.ax,S.ay).mod!=='weather')add(5,'Write today\'s weather and radiation log at your weather station (+25).');
   if(has('med')&&!td.health&&T(S.ax,S.ay).mod!=='med')add(5,'Do today\'s health check at the med bay (+25).');
-  if(realDay(S.sol).kp)add(4,`Real space weather: Earth has a geomagnetic storm today (Kp ${realDay(S.sol).kp}), so sending data to Earth takes 50% longer.`);
+  if(realDay(S.sol).sep)add(8,'Real space weather: NASA DONKI recorded a particle storm (SEP) today. Every step outside the safe zone costs 50% more radiation shield, so stay close to base.');
+  if(realDay(S.sol).kp)add(4,`Real space weather: Earth has a geomagnetic storm today (Kp ${kpTxt(realDay(S.sol).kp)}), so sending data to Earth takes 50% longer.`);
   if(!has('weather'))add(3,'A weather station shows tomorrow\'s forecast and earns 25 points every sol.');
   const ice=S.tiles.findIndex(c=>c.seen&&c.t==='ice'&&!c.done);
   if(ice>=0&&!has('drill'))add(5,'You found ice! Build an ice drill, then drill it for +60 water and 30 points.');
@@ -1216,7 +1300,7 @@ function stepToward(){
   if(!walkTarget)return;const [x,y]=walkTarget;
   if(S.ax!==x)S.ax+=Math.sign(x-S.ax);else S.ay+=Math.sign(y-S.ay);
   reveal(S.ax,S.ay,2);nextStep=now()+STEP_MS;
-  if(!isSafe(S.ax,S.ay)){S.rad=clamp(S.rad-B().step*mult()*(count('rover')?0.5:1))}
+  if(!isSafe(S.ax,S.ay)){S.rad=clamp(S.rad-B().step*mult()*(count('rover')?0.5:1)*sepX())}
   // walking uses suit power: 1 power every 2 steps (every 4 with a suitport)
   S.walkSteps=(S.walkSteps||0)+1;if(S.walkSteps%(count('suitport')?4:2)===0)S.power=clampP(S.power-1);
   if(S.ax===x&&S.ay===y)walkTarget=null;
@@ -1349,7 +1433,7 @@ function render(){
   // here panel
   const c=T(S.ax,S.ay);
   $('#hereTitle').textContent=c.t==='rocket'?'Rocket (your lab)':c.mod?`${MODS[c.mod].name} (${MATS[c.mat||'alu'].name})`:NAMES[c.t];
-  $('#hereText').textContent=(isSafe(S.ax,S.ay)?'Inside the safe zone. ':`Outside the safe zone: walking uses 1 power every ${count('suitport')?4:2} steps, and each step lowers your radiation shield by ${b.step*mult()*(count('rover')?0.5:1)}${count('rover')?' (rover cabin)':''}. `)+(c.t==='plain'&&!c.mod?'Walk to a marked spot or a module to do science.':'');
+  $('#hereText').textContent=(isSafe(S.ax,S.ay)?'Inside the safe zone. ':`Outside the safe zone: walking uses 1 power every ${count('suitport')?4:2} steps, and each step lowers your radiation shield by ${Math.round(b.step*mult()*(count('rover')?0.5:1)*sepX()*100)/100}${count('rover')?' (rover cabin)':''}${sepX()>1?' (particle storm today)':''}. `)+(c.t==='plain'&&!c.mod?'Walk to a marked spot or a module to do science.':'');
   const acts=actionsHere();
   const ac=$('#actions');ac.innerHTML='';
   if(!acts.length)ac.innerHTML='<p class="here">Nothing to do on this tile.</p>';
@@ -1378,7 +1462,7 @@ function render(){
   let fc=`<div class="fc"><span class="label">Today</span><span><b>${ev[0]}</b>. ${ev[1]}</span></div>`;
   if(S.sol<7){if(count('weather')){const ne=evText(S.sol+1);fc+=`<div class="fc"><span class="label">Tomorrow</span><span><b>${ne[0]}</b></span></div>`}
     else fc+=`<div class="fc"><span class="label">Tomorrow</span><span style="color:var(--muted)">Build a weather station to see it.</span></div>`}
-  fc+=`<div class="fc"><span class="label">Real Sun</span><span>${esc(realDayText(S.sol))} <small style="color:var(--muted)">(${WX.how==='donki'?'NASA DONKI':'NOAA'} data)</small></span></div>`;
+  fc+=`<div class="fc"><span class="label">Real Sun</span><span>${esc(realDayText(S.sol))} <small style="color:var(--muted)">(${wxSrcShort()} data)</small></span></div>${dkTimeline(S.sol)}`;
   $('#forecast').innerHTML=fc;
   const p=nightPlan();
   $('#tonight').innerHTML=`Tonight, if you sleep here: ${fx('power',p.dP)} · ${fx('water',p.dW)} · ${fx('oxygen',p.dO)} · ${fx('food',p.dF)} · ${fx('radiation shield',p.dR)}`;
@@ -1400,7 +1484,7 @@ function renderClock(){
 }
 function showBriefing(title,body,btn){
   $('#overlayCard').innerHTML=`<p class="label">${B().name} · sol ${S.sol} of 7</p><h2 style="font-size:1.8rem">${title}</h2>${body}
-    <p style="margin:0"><b>Real space weather today.</b> ${esc(realDayText(S.sol))}</p>
+    <p style="margin:0"><b>Real space weather today.</b> ${esc(realDayText(S.sol))}</p>${dkTimeline(S.sol)}
     <p style="margin:0;color:var(--muted)">You have ${S.solLen%60?Math.round(S.solLen)+' seconds':(S.solLen/60)+' minutes'} of daylight. The day ends on its own when the timer hits zero.</p>
     <div><button class="btn primary" id="briefGo">${btn}</button></div>`;
   $('#overlay').hidden=false;
@@ -1452,7 +1536,9 @@ const BASIS={hab:'ISS modules and NASA habitat designs: air and water recycling 
   tank:'Water is a strong radiation shield (hydrogen-rich)',green:'NASA Veggie plant chamber on the ISS',comms:'Deep Space Network and Mars relay orbiters',weather:'Perseverance MEDA weather station',med:'ISS crew health checks',drill:'NASA lunar and Mars ice-mining studies'};
 function dataTables(){
   const T=(cap,head,rows)=>`<div class="table-wrap"><table class="dataT"><caption style="text-align:left;font-weight:700;padding:4px 0">${cap}</caption><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-  const wx=[1,2,3,4,5,6,7].map(sol=>{const r=realDay(sol);return[`Sol ${sol}`,fmtD(r.d),r.n,r.big||'none',r.kp?`Kp ${r.kp} (${gScale(r.kp)}) geomagnetic storm`:'calm']});
+  const wx=[1,2,3,4,5,6,7].map(sol=>{const r=realDay(sol);return[`Sol ${sol}`,fmtD(r.d),r.n,r.big||'none',r.kp?`Kp ${kpTxt(r.kp)} (${gScale(r.kp)}) geomagnetic storm`:r.kpMax!=null?`calm (Kp ${kpTxt(r.kpMax)})`:'calm']});
+  const dk=WX.donki,lv=dk&&dk.lv,lvw=(k,i)=>lv&&lv[k]?` (level ${lv[k][i]})`:'',dkRows=dk?[1,2,3,4,5,6,7].map(sol=>{const r=realDay(sol),c=dk.cme?dk.cme.filter(x=>x[0].startsWith(r.d)):[];
+    return[`Sol ${sol}`,fmtD(r.d),c.length?`${c.length} (${['slow','medium','fast'].map(b=>[b,c.filter(x=>x[1]===b).length]).filter(x=>x[1]).map(x=>x[1]+' '+x[0]).join(', ')})`:'0',r.enlil,r.sep+lvw('sep',sol-1),r.ips,r.hss+lvw('wind',sol-1),r.mpc+lvw('mpc',sol-1),r.rbe+lvw('rbe',sol-1),r.kpMax!=null?kpTxt(r.kpMax):'?']}):null;
   const rates=[['💧 Water','about 3 L to drink + 1 L to wash = 4 L','16','25 L','Grow food or plants: -4. Dirt sample lab: -2.'],
     ['🫁 Oxygen','0.84 kg','16','5.25 kg','Hull leaks from meteors and grit from dust devils lower it.'],
     ['🍎 Food','1.8 kg','12','15 kg','Food stores last longer, so it drains slower.']];
@@ -1462,7 +1548,8 @@ function dataTables(){
     ['Storm costs','Deep cold -10, moonquake -8, global dust storm or CME -6'],['Power tank','Holds 150. If it is empty at night, water and oxygen each lose 30 (battery bank adds a 20 reserve)']];
   const mods=Object.entries(MODS).map(([k,m])=>[`${m.icon} ${m.name}`,m.cost,m.desc,MODFACT[k]||BASIS[k]||'']);
   const modes=Object.entries(MODES).map(([k,M])=>[M.name,M.crates,M.power,'100 / 100 / 100','100',`${M.sol} s`,`${M.mult}x`,M.target?tgt(M,'mars'):'none',M.target?tgt(M,'moon'):'none',(M.req||[]).map(r=>REQN[r]).join(', ')||'none']);
-  return T(`Real space weather, ${fmtD(WX.from)} to ${fmtD(WX.to)} (source: ${WX.src})`,['Game day','Real date','Solar flares','Biggest flare','Earth\'s magnetic field'],wx)
+  return T(`Real space weather, ${fmtD(addDays(WX.from,1))} to ${fmtD(WX.to)} (source: ${WX.src})`,['Game day','Real date','Solar flares','Biggest flare','Earth\'s magnetic field'],wx)
+   +(dkRows?T(`NASA DONKI timeline, day by day (events logged; level = how high the chart line was, 0 to 100)`,['Game day','Real date','Sun clouds (CME)','Computer forecasts (ENLIL)','Particle storms (SEP)','Cloud hits Earth (ICME)','Fast solar wind (HSS)','Shield squeezed (MPC)','Radiation belt boosts (RBE)','Highest Kp'],dkRows)+dkTimeline(0).replace('<details class="dk" ','<details class="dk" open '):'')
    +T('NASA daily use per astronaut and the game scale',['Resource','NASA daily use','Game points a sol','A full store (100) holds','Other uses'],rates)
    +T('Power (fuel) costs and sources',['What','Power'],pw)
    +T('Modules and the NASA systems they are based on',['Module','Crates','What it does','Real NASA basis'],mods)
