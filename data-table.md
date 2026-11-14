@@ -2,17 +2,29 @@
 
 The real data behind the game and how it maps to game numbers. Generated from the game file, so it matches the game exactly.
 
-## Real space weather, Nov 1, 2026 to Nov 8, 2026 (source: NOAA Space Weather Prediction Center (GOES X-ray flares and planetary Kp index))
+## Real space weather, Nov 7, 2026 to Nov 14, 2026 (source: NASA DONKI space weather timeline, read pixel by pixel from a screenshot taken Nov 14, 2026)
 
 | Game day | Real date | Solar flares | Biggest flare | Earth's magnetic field |
 |---|---|---|---|---|
-| Sol 1 | Nov 2, 2026 | 4 | B8.0 | calm (Kp 3) |
-| Sol 2 | Nov 3, 2026 | 5 | C1.1 | calm (Kp 2) |
-| Sol 3 | Nov 4, 2026 | 3 | C2.2 | calm (Kp 3) |
-| Sol 4 | Nov 5, 2026 | 9 | M3.5 | calm (Kp 2) |
-| Sol 5 | Nov 6, 2026 | 22 | C5.6 | calm (Kp 3) |
-| Sol 6 | Nov 7, 2026 | 29 | M1.9 | Kp 5 (G1) geomagnetic storm |
-| Sol 7 | Nov 8, 2026 | 30 | M1.7 | Kp 5 (G1) geomagnetic storm |
+| Sol 1 | Nov 8, 2026 | 30 | M1.7 | Kp 5 (G1) geomagnetic storm |
+| Sol 2 | Nov 9, 2026 | 16 | C5.5 | calm (Kp 3.3) |
+| Sol 3 | Nov 10, 2026 | 11 | C9.4 | calm (Kp 3) |
+| Sol 4 | Nov 11, 2026 | 11 | M1.6 | calm (Kp 2.7) |
+| Sol 5 | Nov 12, 2026 | 18 | C7.2 | calm (Kp 1.7) |
+| Sol 6 | Nov 13, 2026 | 11 | C5.5 | calm (Kp 1.3) |
+| Sol 7 | Nov 14, 2026 | 4 | C4.2 | calm (Kp 1) |
+
+## NASA DONKI timeline, day by day (events logged; level = how high the chart line was, 0 to 100)
+
+| Game day | Real date | Sun clouds (CME) | Computer forecasts (ENLIL) | Particle storms (SEP) | Cloud hits Earth (ICME) | Fast solar wind (HSS) | Shield squeezed (MPC) | Radiation belt boosts (RBE) | Highest Kp |
+|---|---|---|---|---|---|---|---|---|---|
+| Sol 1 | Nov 8, 2026 | 2 (2 medium) | 1 | 0 (level 41) | 0 | 0 (level 75) | 0 (level 41) | 0 (level 68) | 5 |
+| Sol 2 | Nov 9, 2026 | 3 (2 slow, 1 fast) | 1 | 0 (level 44) | 0 | 0 (level 68) | 0 (level 41) | 0 (level 82) | 3.3 |
+| Sol 3 | Nov 10, 2026 | 3 (2 slow, 1 fast) | 2 | 0 (level 44) | 0 | 0 (level 58) | 0 (level 48) | 0 (level 88) | 3 |
+| Sol 4 | Nov 11, 2026 | 1 (1 fast) | 1 | 0 (level 40) | 0 | 0 (level 37) | 0 (level 50) | 0 (level 88) | 2.7 |
+| Sol 5 | Nov 12, 2026 | 2 (1 slow, 1 fast) | 0 | 0 (level 38) | 0 | 0 (level 28) | 0 (level 57) | 0 (level 83) | 1.7 |
+| Sol 6 | Nov 13, 2026 | 4 (2 slow, 1 medium, 1 fast) | 1 | 0 (level 40) | 0 | 0 (level 15) | 0 (level 60) | 0 (level 88) | 1.3 |
+| Sol 7 | Nov 14, 2026 | 2 (2 slow) | 0 | 0 (level 39) | 0 | 0 (level 14) | 0 (level 54) | 0 (level 84) | 1 |
 
 ## NASA daily use per astronaut and the game scale
 
@@ -65,10 +77,54 @@ The real data behind the game and how it maps to game numbers. Generated from th
 
 | Mode | Crates | Start power (of 150) | Start water / oxygen / food | Start radiation shield | Day length | Storm strength | Mars target | Moon target | Required modules |
 |---|---|---|---|---|---|---|---|---|---|
-| Cadet | 32 | 150 | 100 / 100 / 100 | 100 | 300 s | 0.5x | 690 | 920 | 🏠 Habitat, ⚡ Power (solar panel or reactor) |
-| Junior astronaut | 28 | 150 | 100 / 100 / 100 | 100 | 240 s | 0.75x | 620 | 860 | 🏠 Habitat, ⚡ Power (solar panel or reactor), 📡 Comms dish |
-| Commander | 25 | 150 | 100 / 100 / 100 | 100 | 180 s | 1x | 440 | 710 | 🏠 Habitat, ⚡ Power (solar panel or reactor), 📡 Comms dish, 🌱 Greenhouse |
+| Cadet | 32 | 150 | 100 / 100 / 100 | 100 | 300 s | 0.5x | 760 | 960 | 🏠 Habitat, ⚡ Power (solar panel or reactor) |
+| Junior astronaut | 28 | 150 | 100 / 100 / 100 | 100 | 240 s | 0.75x | 690 | 870 | 🏠 Habitat, ⚡ Power (solar panel or reactor), 📡 Comms dish |
+| Commander | 25 | 150 | 100 / 100 / 100 | 100 | 180 s | 1x | 470 | 740 | 🏠 Habitat, ⚡ Power (solar panel or reactor), 📡 Comms dish, 🌱 Greenhouse |
 | Veteran | 22 | 135 | 100 / 100 / 100 | 100 | 150 s | 1.15x | 340 | 610 | 🏠 Habitat, ⚡ Power (solar panel or reactor), 📡 Comms dish, 🌱 Greenhouse, 🩺 Med bay |
 | Free play | 40 | 150 | 100 / 100 / 100 | 100 | 360 s | 0.75x | none | none | none |
 
 A cargo lander also brings +4 crates on the morning of sol 4.
+
+## How the Nov 8 to 14, 2026 space weather was measured
+
+Source: the NASA DONKI space weather timeline (screenshot taken Nov 14, 2026, 2486 x 1296 px). The cloud computer could not reach api.nasa.gov, so every value was measured from the chart pixels.
+
+| What | Method | Accuracy check |
+|---|---|---|
+| Time axis | Day ticks at x = 102.5, 473.5 … 2330.5 px: 371.33 px a day (15.47 px an hour) | The chart cursor (x = 979.5) reads 08:40 UTC; the label says 08:41:06 |
+| Kp (GST row) | Bar height / 13.5 px = Kp; heights fall on exact thirds (0.33, 0.67, 1 …) | Nov 8 max Kp 5.0 matches the NOAA Kp list already in the game |
+| Flare class (FLR row) | Log fit of curve height vs the 14 Nov 7 to 8 flares with known NOAA classes | Largest error 8% of flare strength |
+| Flare times and count | Peaks whose flux rose about 1.4x within an hour (the GOES flare rule) | On Nov 8 the method found 20 of the 30 NOAA flares, all 3 M-class, each within 5 min. Nov 9 to 14 counts are a minimum. Nov 8 uses the exact NOAA list |
+| CMEs and ENLIL runs | Centers of the round markers; colour = speed band (yellow slow, orange medium, red fast) | 17 CMEs and 6 ENLIL runs, same as a visual count |
+| SEP, ICME, HSS, MPC, RBE | No DONKI event markers in the window, so 0 events. Daily "level" = mean height of the data line, 0 to 100 of the row | Relative only: no units on the chart |
+
+### Solar flares Nov 9 to 14 (peak time UTC, class)
+
+| Day | Flares |
+|---|---|
+| 2026-11-09 | 00:27 C2.4, 01:10 C4.9, 02:24 C1.1, 04:08 C5.5, 05:18 C1.8, 06:28 C1.4, 08:55 C2.0, 11:15 C1.3, 13:15 C1.4, 14:25 C5.5, 15:08 C2.9, 17:12 C5.5, 18:06 C3.2, 19:47 C1.6, 20:14 C1.7, 23:43 C3.0 |
+| 2026-11-10 | 01:40 C2.0, 03:28 C2.4, 04:03 C3.2, 07:05 C2.6, 08:35 C9.4, 10:00 C8.9, 12:16 C1.3, 13:25 C3.2, 16:59 C1.3, 18:20 C2.3, 20:32 C2.4 |
+| 2026-11-11 | 00:36 C1.1, 03:46 C2.1, 04:29 C2.2, 10:10 B9.6, 13:28 C1.0, 14:38 C1.2, 17:48 C3.2, 18:23 C2.2, 20:15 C1.3, 21:17 M1.6, 22:23 C1.1 |
+| 2026-11-12 | 00:35 C1.8, 02:43 C2.4, 03:41 C7.2, 04:28 C1.8, 05:26 C1.2, 06:20 C1.7, 08:01 B9.1, 08:51 C2.1, 10:05 C2.1, 11:11 C4.0, 12:25 C2.7, 15:00 C2.6, 16:21 C1.2, 18:53 C1.0, 20:10 C1.8, 20:49 B8.6, 22:41 C1.3, 23:59 B8.6 |
+| 2026-11-13 | 00:42 B9.6, 01:28 C1.1, 09:44 C1.1, 11:17 C1.0, 12:27 B9.6, 13:53 C1.0, 14:20 C1.2, 17:38 C1.3, 18:20 C5.5, 21:57 C1.6, 23:38 C2.0 |
+| 2026-11-14 | 00:09 C1.6, 01:38 C1.8, 03:31 C1.2, 06:06 C4.2 |
+
+### Kp every 3 hours (UTC start time)
+
+| Day | 00 | 03 | 06 | 09 | 12 | 15 | 18 | 21 |
+|---|---|---|---|---|---|---|---|---|
+| 2026-11-08 | 5.0 | 3.33 | 3.0 | 3.33 | 2.67 | 3.33 | 4.0 | 2.67 |
+| 2026-11-09 | 3.0 | 3.33 | 2.67 | 2.67 | 2.0 | 2.67 | 2.67 | 2.0 |
+| 2026-11-10 | 3.0 | 3.0 | 2.33 | 2.67 | 1.33 | 3.0 | 2.33 | 2.0 |
+| 2026-11-11 | 1.67 | 0.67 | 1.67 | 2.33 | 1.0 | 1.33 | 2.67 | 1.33 |
+| 2026-11-12 | 1.0 | 1.67 | 1.67 | 0.67 | 0.67 | 0.33 | 1.33 | 1.67 |
+| 2026-11-13 | 1.33 | 0.33 | 1.33 | 1.0 | 0.67 | 0.67 | 0.67 | 0.67 |
+| 2026-11-14 | 0.33 | 0.67 | 1.0 |  |  |  |  |  |
+
+### CMEs (start time UTC, speed band) and ENLIL runs
+
+CMEs: 11-08 00:44 medium, 11-08 08:46 medium, 11-09 09:11 slow, 11-09 10:52 fast, 11-09 18:15 slow, 11-10 01:59 slow, 11-10 02:12 fast, 11-10 05:30 slow, 11-11 23:23 fast, 11-12 01:53 slow, 11-12 21:13 fast, 11-13 01:27 fast, 11-13 03:26 slow, 11-13 09:24 medium, 11-13 21:25 slow, 11-14 01:50 slow, 11-14 04:00 slow.
+
+ENLIL runs: 11-08 00:43, 11-09 18:15, 11-10 01:59, 11-10 02:12, 11-11 23:23, 11-13 03:26.
+
+Data ends Nov 14, 10:00 UTC.
